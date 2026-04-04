@@ -5,55 +5,79 @@ import React from "react";
 import { useApp } from "@/lib/context";
 import { SourceBadge } from "@/lib/metadata-badges";
 import { Share } from "@/lib/types";
-import Link from "next/link";
+import { getRemoteShareStatus } from "@/lib/supabase";
+
+type ShareStatus = "active" | "revoked" | "expired" | "notfound";
 
 export default function ProviderViewPage({ params }: { params: Promise<{ shareId: string }> }) {
   const { shareId } = React.use(params);
   const { getShare } = useApp();
   const [share, setShare] = useState<Share | null>(null);
   const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
-  const [revoked, setRevoked] = useState(false);
+  const [status, setStatus] = useState<ShareStatus>("notfound");
 
   useEffect(() => {
     // Define functions inside effect to avoid stale closures
     const loadShare = async () => {
       try {
+        // Check remote status first
+        const remoteStatus = await getRemoteShareStatus(shareId);
+
+        if (remoteStatus === "revoked") {
+          setStatus("revoked");
+          setShare(null);
+          return;
+        }
+
+        if (remoteStatus === "expired") {
+          setStatus("expired");
+          setShare(null);
+          return;
+        }
+
+        if (remoteStatus === "notfound") {
+          setStatus("notfound");
+          setShare(null);
+          return;
+        }
+
+        // Status is "active", fetch the share
         const fetchedShare = await getShare(shareId);
         if (fetchedShare) {
           setShare(fetchedShare);
-          setNotFound(false);
-          setRevoked(false);
+          setStatus("active");
         } else {
-          setNotFound(true);
+          setStatus("notfound");
           setShare(null);
         }
+      } catch (error) {
+        console.error("Error loading share:", error);
+        setStatus("notfound");
+        setShare(null);
       } finally {
         setLoading(false);
       }
     };
 
-    const checkIfRevoked = async () => {
+    loadShare();
+
+    // Poll every 5 seconds to check if share status changed (revoked/expired)
+    const pollInterval = setInterval(async () => {
       try {
-        const currentShare = await getShare(shareId);
-        if (!currentShare) {
-          // Share was revoked or deleted
-          setRevoked(true);
-          setShare(null);
+        const remoteStatus = await getRemoteShareStatus(shareId);
+        if (remoteStatus !== status) {
+          setStatus(remoteStatus);
+          if (remoteStatus !== "active") {
+            setShare(null);
+          }
         }
       } catch (error) {
         console.error("Error checking share status:", error);
       }
-    };
-
-    // Initial load
-    loadShare();
-
-    // Poll every 3 seconds to check if share still exists
-    const pollInterval = setInterval(checkIfRevoked, 3000);
+    }, 5000);
 
     return () => clearInterval(pollInterval);
-  }, [shareId, getShare]);
+  }, [shareId, getShare, status]);
 
   if (loading) {
     return (
@@ -63,7 +87,7 @@ export default function ProviderViewPage({ params }: { params: Promise<{ shareId
     );
   }
 
-  if (revoked) {
+  if (status === "revoked") {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="card text-center max-w-md">
@@ -72,7 +96,7 @@ export default function ProviderViewPage({ params }: { params: Promise<{ shareId
           <p className="text-gray-600 mb-4">
             This shared health record is no longer available. The patient has revoked access.
           </p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 mb-6">
             Share ID: {shareId}
           </p>
         </div>
@@ -80,17 +104,34 @@ export default function ProviderViewPage({ params }: { params: Promise<{ shareId
     );
   }
 
-  if (notFound) {
+  if (status === "expired") {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="card text-center max-w-md">
+          <p className="text-3xl mb-3">⏰</p>
+          <p className="text-2xl font-bold text-gray-900 mb-2">Share Expired</p>
+          <p className="text-gray-600 mb-4">
+            This shared health record is no longer available. The share link has expired.
+          </p>
+          <p className="text-xs text-gray-500 mb-6">
+            Share ID: {shareId}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === "notfound") {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="card text-center max-w-md">
           <p className="text-2xl font-bold text-gray-900 mb-2">Share Not Found</p>
-          <p className="text-gray-600 mb-4">
+          <p className="text-gray-600 mb-6">
             This shared record has been deleted or is no longer available.
           </p>
-          <Link href="/" className="btn-primary inline-block">
-            Back to Dashboard
-          </Link>
+          <p className="text-xs text-gray-500">
+            Share ID: {shareId}
+          </p>
         </div>
       </div>
     );

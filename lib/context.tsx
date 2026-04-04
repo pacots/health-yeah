@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Patient, Record, Document, Share, Wallet } from "./types";
 import { storage, generateShareId } from "./storage";
+import { createRemoteShare, getRemoteShare, revokeRemoteShare } from "./supabase";
+import { buildShareSnapshot } from "./sharing/buildShareSnapshot";
 
 type AppContextType = {
   // State
@@ -29,6 +31,7 @@ type AppContextType = {
   getShare: (shareId: string) => Promise<Share | null>;
   getAllShares: () => Promise<Share[]>;
   deleteShare: (shareId: string) => Promise<void>;
+  revokeShare: (shareId: string) => Promise<void>;
 
   // Utility
   resetToDemo: () => Promise<void>;
@@ -153,22 +156,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!patient) throw new Error("No patient found");
 
     const selectedRecords = records.filter((r) => selectedRecordIds.includes(r.id));
-    const selectedDocuments = scope === "continuity" ? documents : [];
+    const shareId = generateShareId();
 
-    const share: Share = {
-      id: generateShareId(),
-      scope,
-      patientSnapshot: patient,
-      recordSnapshots: selectedRecords,
-      documentSnapshots: selectedDocuments,
-      createdAt: Date.now(),
-    };
+    // Build share snapshot with correct payload per scope
+    const shareSnapshot = buildShareSnapshot(scope, patient, selectedRecords, documents);
+    shareSnapshot.id = shareId;
 
-    await storage.setShare(share);
-    return share;
+    try {
+      // Upload to Supabase first (primary storage for cross-device access)
+      await createRemoteShare(shareId, scope, shareSnapshot);
+    } catch (error) {
+      console.warn("Failed to create remote share, save will be local-only:", error);
+      // Continue: save locally as fallback
+    }
+
+    // Also save locally for same-device access and backward compatibility
+    await storage.setShare(shareSnapshot);
+
+    return shareSnapshot;
   };
 
   const getShare = async (shareId: string) => {
+    // Try remote storage first (Supabase) for cross-device access
+    try {
+      const remoteShare = await getRemoteShare(shareId);
+      if (remoteShare) {
+        return remoteShare;
+      }
+    } catch (error) {
+      console.warn("Failed to fetch remote share, trying local storage:", error);
+    }
+
+    // Fall back to local storage (backward compatibility)
     return storage.getShare(shareId);
   };
 
@@ -177,6 +196,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteShare = async (shareId: string) => {
+    // Revoke remotely (marks as revoked instead of deleting)
+    try {
+      await revokeRemoteShare(shareId);
+    } catch (error) {
+      console.warn("Failed to revoke remote share:", error);
+    }
+
+    // Also delete locally
+    await storage.deleteShare(shareId);
+  };
+
+  const revokeShare = async (shareId: string) => {
+    // Revoke remotely (same as deleteShare - marks as revoked)
+    try {
+      await revokeRemoteShare(shareId);
+    } catch (error) {
+      console.warn("Failed to revoke remote share:", error);
+    }
+
+    // Also delete locally
     await storage.deleteShare(shareId);
   };
 
@@ -204,6 +243,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     getShare,
     getAllShares,
     deleteShare,
+    revokeShare,
     resetToDemo,
   };
 
