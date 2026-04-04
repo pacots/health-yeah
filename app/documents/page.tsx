@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useApp } from "@/lib/context";
 import Link from "next/link";
+import { ConfirmDialog } from "@/lib/ConfirmDialog";
 
 export default function DocumentsPage() {
   const { documents, addDocument, deleteDocument } = useApp();
@@ -94,15 +95,15 @@ function DocumentDetailModal({
   onDelete: () => Promise<void>;
 }) {
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleDelete = async () => {
-    if (confirm(`Delete "${doc.title}"? This action cannot be undone.`)) {
-      setDeleting(true);
-      try {
-        await onDelete();
-      } finally {
-        setDeleting(false);
-      }
+    setDeleting(true);
+    try {
+      await onDelete();
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -136,7 +137,7 @@ function DocumentDetailModal({
         {/* Footer */}
         <div className="border-t border-gray-200 bg-gray-50 p-4 sm:p-6 flex flex-col sm:flex-row gap-2">
           <button
-            onClick={handleDelete}
+            onClick={() => setShowDeleteConfirm(true)}
             disabled={deleting}
             className="btn-danger flex-1 text-sm"
           >
@@ -149,6 +150,19 @@ function DocumentDetailModal({
             Close
           </button>
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <ConfirmDialog
+          isOpen={showDeleteConfirm}
+          title="Delete Document"
+          message={`Are you sure you want to delete "${doc.title}"? This action cannot be undone.`}
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          isDangerous={true}
+          isLoading={deleting}
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
       </div>
     </div>
   );

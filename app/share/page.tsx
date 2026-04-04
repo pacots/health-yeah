@@ -4,12 +4,16 @@ import { useState, useEffect } from "react";
 import { useApp } from "@/lib/context";
 import { Share } from "@/lib/types";
 import Link from "next/link";
+import { ConfirmDialog } from "@/lib/ConfirmDialog";
 
 export default function SharePage() {
   const { records, createShare, getAllShares, deleteShare } = useApp();
   const [showForm, setShowForm] = useState(false);
   const [shares, setShares] = useState<Share[]>([]);
   const [loading, setLoading] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; show: boolean }>({ id: "", show: false });
+  const [deleting, setDeleting] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     loadShares();
@@ -20,10 +24,15 @@ export default function SharePage() {
     setShares(allShares);
   };
 
-  const handleDeleteShare = async (shareId: string) => {
-    if (confirm("Delete this share?")) {
-      await deleteShare(shareId);
-      setShares(shares.filter((s) => s.id !== shareId));
+  const handleDeleteShare = async () => {
+    if (!deleteConfirm.id) return;
+    setDeleting(true);
+    try {
+      await deleteShare(deleteConfirm.id);
+      setShares(shares.filter((s) => s.id !== deleteConfirm.id));
+    } finally {
+      setDeleting(false);
+      setDeleteConfirm({ id: "", show: false });
     }
   };
 
@@ -33,7 +42,6 @@ export default function SharePage() {
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(fullUrl);
-        alert("Share link copied to clipboard!");
       } else {
         // Fallback for older browsers
         const textarea = document.createElement("textarea");
@@ -42,11 +50,11 @@ export default function SharePage() {
         textarea.select();
         document.execCommand("copy");
         document.body.removeChild(textarea);
-        alert("Share link copied to clipboard!");
       }
+      setCopiedId(shareId);
+      setTimeout(() => setCopiedId(null), 2000);
     } catch (error) {
       console.error("Failed to copy:", error);
-      alert("Could not copy link. Share ID: " + shareId);
     }
   };
 
@@ -105,7 +113,7 @@ export default function SharePage() {
                       </p>
                     </div>
                     <button
-                      onClick={() => handleDeleteShare(share.id)}
+                      onClick={() => setDeleteConfirm({ id: share.id, show: true })}
                       className="btn-danger btn-sm text-sm whitespace-nowrap flex-shrink-0"
                     >
                       Revoke
@@ -122,9 +130,13 @@ export default function SharePage() {
                   <div className="flex flex-col sm:flex-row gap-2">
                     <button
                       onClick={() => handleCopyLink(share.id)}
-                      className="btn-secondary flex-1 text-sm"
+                      className={`btn-secondary flex-1 text-sm transition ${
+                        copiedId === share.id
+                          ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
+                          : ""
+                      }`}
                     >
-                      📋 Copy Link
+                      {copiedId === share.id ? "✓ Copied!" : "📋 Copy Link"}
                     </button>
                     <Link href={`/share/${share.id}`} className="btn-primary flex-1 text-center text-sm">
                       Preview
@@ -135,6 +147,19 @@ export default function SharePage() {
             </div>
           )}
         </div>
+
+        {/* Confirmation Dialogs */}
+        <ConfirmDialog
+          isOpen={deleteConfirm.show}
+          title="Revoke Share"
+          message="Are you sure you want to revoke this share? The provider will no longer have access to the patient's health information."
+          confirmLabel="Revoke"
+          cancelLabel="Cancel"
+          isDangerous={true}
+          isLoading={deleting}
+          onConfirm={handleDeleteShare}
+          onCancel={() => setDeleteConfirm({ id: "", show: false })}
+        />
       </div>
     </div>
   );
@@ -149,7 +174,7 @@ function ShareForm({
   onClose: () => void;
   onSave: (scope: "emergency" | "continuity", selectedIds: string[]) => Promise<void>;
 }) {
-  const [scope, setScope] = useState<"emergency" | "continuity">("emergency");
+  const [scope, setScope] = useState<"emergency" | "continuity" | null>(null);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -173,14 +198,13 @@ function ShareForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedRecordIds.length === 0) {
-      alert("Please select at least one record to share");
+    if (!scope || selectedRecordIds.length === 0) {
       return;
     }
 
     setLoading(true);
     try {
-      await onSave(scope, selectedRecordIds);
+      await onSave(scope as "emergency" | "continuity", selectedRecordIds);
     } finally {
       setLoading(false);
     }
@@ -301,7 +325,7 @@ function ShareForm({
           <div className="flex flex-col sm:flex-row gap-2 pt-4">
             <button
               type="submit"
-              disabled={loading || selectedRecordIds.length === 0}
+              disabled={loading || !scope || selectedRecordIds.length === 0}
               className="btn-primary flex-1 text-sm"
             >
               {loading ? "Generating..." : "Generate Share"}
