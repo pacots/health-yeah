@@ -3,6 +3,7 @@
 import { useApp } from "@/lib/context";
 import Link from "next/link";
 import { useState } from "react";
+import { AlertTriangle, Pill, Heart, FileText, Share2, CheckCircle, Plus, Phone, ArrowRight } from "lucide-react";
 
 export default function Home() {
   const { patient, records, documents, loading, resetToDemo } = useApp();
@@ -51,17 +52,17 @@ export default function Home() {
         {/* Header Section */}
         <div className="page-header flex flex-col sm:flex-row justify-between items-start gap-4">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-teal-600 uppercase tracking-widest mb-2">Welcome</p>
+            <p className="text-sm font-semibold text-blue-600 uppercase tracking-widest mb-2">Welcome Back</p>
             <h1 className="page-title">Health Wallet</h1>
-            <p className="page-subtitle">Your complete health in one place</p>
+            <p className="page-subtitle">Your complete health information, always accessible</p>
           </div>
           <button
             onClick={handleReset}
             disabled={resetting}
-            className="btn-secondary btn-sm whitespace-nowrap flex-shrink-0"
+            className="btn-tertiary btn-sm whitespace-nowrap flex-shrink-0"
             title="Reset wallet to demo data"
           >
-            {resetting ? "Resetting..." : "🔄 Reset"}
+            {resetting ? "Resetting..." : "Reset Demo"}
           </button>
         </div>
 
@@ -69,17 +70,19 @@ export default function Home() {
         <div className="card-premium section-spacing-narrow">
           <div className="flex flex-col sm:flex-row justify-between items-start gap-6">
             <div className="flex-1 min-w-0">
-              <p className="section-header mb-2">Patient Identity</p>
+              <p className="section-header mb-2">Patient Profile</p>
               <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 break-words">{patient.name}</h2>
-              <p className="text-sm text-slate-600 mt-2">
-                Born {new Date(patient.dateOfBirth).toLocaleDateString()}
+              <p className="text-sm text-slate-600 mt-2 flex items-center gap-2">
+                <span className="text-slate-400">Born</span> {new Date(patient.dateOfBirth).toLocaleDateString()}
               </p>
               {patient.emergencyContact && (
-                <div className="mt-4 p-3 bg-white/80 rounded-lg border border-slate-200">
-                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">Emergency Contact</p>
-                  <p className="font-semibold text-slate-900">{patient.emergencyContact.name}</p>
-                  <p className="text-sm text-slate-600">{patient.emergencyContact.relationship}</p>
-                  <p className="text-base font-mono font-bold text-teal-700 mt-1">{patient.emergencyContact.phone}</p>
+                <div className="mt-5 pt-5 border-t border-blue-200/50">
+                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-3 flex items-center gap-2">
+                    <Phone size={14} className="text-blue-600" /> Emergency Contact
+                  </p>
+                  <p className="font-semibold text-slate-900 text-lg">{patient.emergencyContact.name}</p>
+                  <p className="text-sm text-slate-600 mt-1">{patient.emergencyContact.relationship}</p>
+                  <p className="text-base font-mono font-semibold text-blue-700 mt-2">{patient.emergencyContact.phone}</p>
                 </div>
               )}
             </div>
@@ -91,19 +94,19 @@ export default function Home() {
 
         {/* Health Summary Stats */}
         <div className="section-spacing">
-          <p className="section-header">Health Summary</p>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="stat-block">
-              <p className="stat-value text-rose-600">{allergies.length}</p>
-              <p className="stat-label">Allergies</p>
+          <p className="section-header">Health Overview</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="stat-card">
+              <p className="stat-label">Allergies Recorded</p>
+              <p className="stat-value text-red-600">{allergies.length}</p>
             </div>
-            <div className="stat-block">
-              <p className="stat-value text-sky-600">{medications.length}</p>
-              <p className="stat-label">Active Meds</p>
+            <div className="stat-card">
+              <p className="stat-label">Active Medications</p>
+              <p className="stat-value text-blue-600">{medications.length}</p>
             </div>
-            <div className="stat-block">
+            <div className="stat-card">
+              <p className="stat-label">Health Conditions</p>
               <p className="stat-value text-emerald-600">{conditions.length}</p>
-              <p className="stat-label">Conditions</p>
             </div>
           </div>
         </div>
@@ -111,37 +114,70 @@ export default function Home() {
         {/* Medical Records Grid */}
         <div className="section-spacing">
           <p className="section-header">Medical Records</p>
-          <div className="dashboard-grid">
-            <Link href="/records/allergies" className="dashboard-card card-accent-rose">
-              <div className="dashboard-card-icon">🚨</div>
-              <p className="dashboard-card-title">Allergies</p>
-              <p className="dashboard-card-desc">{allergies.length} recorded</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Link href="/records/allergies" className="record-item record-item-allergy hover:border-red-500 group">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <AlertTriangle size={20} className="text-red-600" />
+                    <p className="text-lg font-semibold text-slate-900">Allergies</p>
+                  </div>
+                  <p className="text-sm text-slate-600">{allergies.length} {allergies.length === 1 ? "allergy" : "allergies"} recorded</p>
+                </div>
+                <ArrowRight size={18} className="text-slate-400 group-hover:text-red-600 transition-colors" />
+              </div>
             </Link>
-            <Link href="/records/medications" className="dashboard-card card-accent-sky">
-              <div className="dashboard-card-icon">💊</div>
-              <p className="dashboard-card-title">Medications</p>
-              <p className="dashboard-card-desc">{medications.length} active</p>
+
+            <Link href="/records/medications" className="record-item record-item-medication hover:border-blue-500 group">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Pill size={20} className="text-blue-600" />
+                    <p className="text-lg font-semibold text-slate-900">Medications</p>
+                  </div>
+                  <p className="text-sm text-slate-600">{medications.length} {medications.length === 1 ? "medication" : "medications"} active</p>
+                </div>
+                <ArrowRight size={18} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
+              </div>
             </Link>
-            <Link href="/records/conditions" className="dashboard-card card-accent-emerald">
-              <div className="dashboard-card-icon">🏥</div>
-              <p className="dashboard-card-title">Conditions</p>
-              <p className="dashboard-card-desc">{conditions.length} documented</p>
+
+            <Link href="/records/conditions" className="record-item record-item-condition hover:border-emerald-500 group">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Heart size={20} className="text-emerald-600" />
+                    <p className="text-lg font-semibold text-slate-900">Conditions</p>
+                  </div>
+                  <p className="text-sm text-slate-600">{conditions.length} {conditions.length === 1 ? "condition" : "conditions"} documented</p>
+                </div>
+                <ArrowRight size={18} className="text-slate-400 group-hover:text-emerald-600 transition-colors" />
+              </div>
             </Link>
-            <Link href="/documents" className="dashboard-card card-accent-amber">
-              <div className="dashboard-card-icon">📄</div>
-              <p className="dashboard-card-title">Documents</p>
-              <p className="dashboard-card-desc">{documents.length} files</p>
+
+            <Link href="/documents" className="record-item hover:border-amber-500 group">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <FileText size={20} className="text-amber-600" />
+                    <p className="text-lg font-semibold text-slate-900">Documents</p>
+                  </div>
+                  <p className="text-sm text-slate-600">{documents.length} {documents.length === 1 ? "file" : "files"} stored</p>
+                </div>
+                <ArrowRight size={18} className="text-slate-400 group-hover:text-amber-600 transition-colors" />
+              </div>
             </Link>
           </div>
         </div>
 
         {/* Primary Actions */}
-        <div className="flex flex-col gap-3">
-          <Link href="/summary/emergency" className="btn-primary w-full text-center py-3.5 text-lg font-bold shadow-lg">
-            🆘 Emergency Summary
+        <div className="action-group mt-8">
+          <Link href="/summary/emergency" className="btn-primary flex-1 flex items-center justify-center gap-2 py-3">
+            <AlertTriangle size={18} />
+            <span>Emergency Health Card</span>
           </Link>
-          <Link href="/share" className="btn-secondary w-full text-center py-3.5 text-lg font-bold">
-            📤 Share Record
+          <Link href="/share" className="btn-secondary flex-1 flex items-center justify-center gap-2 py-3">
+            <Share2 size={18} />
+            <span>Share Record</span>
           </Link>
         </div>
       </div>

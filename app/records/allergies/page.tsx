@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useApp } from "@/lib/context";
 import { AllergyRecord } from "@/lib/types";
-import { SourceBadge, LastUpdated } from "@/lib/metadata-badges";
 import Link from "next/link";
+import { AlertTriangle, Trash2, Plus } from "lucide-react";
 
 export default function AllergiesPage() {
   const { records, addRecord, deleteRecord } = useApp();
@@ -18,15 +18,20 @@ export default function AllergiesPage() {
       <div className="page-max-width">
         {/* Header */}
         <div className="page-header flex flex-col sm:flex-row justify-between items-start gap-4">
-          <div className="min-w-0">
-            <Link href="/" className="back-link">
+          <div className="min-w-0 flex-1">
+            <Link href="/" className="back-link mb-4">
               ← Back to Dashboard
             </Link>
-            <h1 className="page-title">Allergies</h1>
-            <p className="page-subtitle">Your documented allergies & sensitivities</p>
+            <div className="flex items-start gap-3">
+              <AlertTriangle size={28} className="text-red-600 flex-shrink-0 mt-1" />
+              <div>
+                <h1 className="page-title">Allergies & Sensitivities</h1>
+                <p className="page-subtitle">Manage your documented allergies</p>
+              </div>
+            </div>
           </div>
-          <button onClick={() => setShowForm(true)} className="btn-primary btn-sm whitespace-nowrap flex-shrink-0">
-            + Add Allergy
+          <button onClick={() => setShowForm(true)} className="btn-primary btn-sm whitespace-nowrap flex-shrink-0 flex items-center gap-2">
+            <Plus size={16} /> Add Allergy
           </button>
         </div>
 
