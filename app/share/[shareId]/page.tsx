@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import React from "react";
 import { useApp } from "@/lib/context";
 import { Share } from "@/lib/types";
 import Link from "next/link";
 
-export default function ProviderViewPage({ params }: { params: { shareId: string } }) {
+export default function ProviderViewPage({ params }: { params: Promise<{ shareId: string }> }) {
+  const { shareId } = React.use(params);
   const { getShare } = useApp();
   const [share, setShare] = useState<Share | null>(null);
   const [loading, setLoading] = useState(true);
@@ -13,11 +15,11 @@ export default function ProviderViewPage({ params }: { params: { shareId: string
 
   useEffect(() => {
     loadShare();
-  }, [params.shareId]);
+  }, [shareId]);
 
   const loadShare = async () => {
     try {
-      const fetchedShare = await getShare(params.shareId);
+      const fetchedShare = await getShare(shareId);
       if (fetchedShare) {
         setShare(fetchedShare);
       } else {
