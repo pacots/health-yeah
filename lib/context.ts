@@ -46,19 +46,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const initialize = async () => {
     setLoading(true);
     try {
-      const { patient: p, records: r, documents: d } = await storage.initializeWithDemoData();
+      // Add a timeout to prevent indefinite loading on first visit
+      const initPromise = storage.initializeWithDemoData();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Initialization timeout")), 5000)
+      );
+
+      const { patient: p, records: r, documents: d } = await Promise.race([
+        initPromise,
+        timeoutPromise,
+      ]) as any;
+
       setPatient(p);
       setRecords(r);
       setDocuments(d);
     } catch (error) {
       console.error("Failed to initialize:", error);
+      // Initialize with defaults if storage fails
+      setLoading(false);
+      setTimeout(() => initialize(), 1000); // Retry after 1 second
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    initialize();
+    // Ensure this only runs on client
+    if (typeof window !== "undefined") {
+      initialize();
+    }
   }, []);
 
   // Patient actions
