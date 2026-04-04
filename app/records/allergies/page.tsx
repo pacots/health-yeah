@@ -13,17 +13,17 @@ export default function AllergiesPage() {
   const allergies = records.filter((r) => r.type === "allergy") as AllergyRecord[];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-50 py-8 sm:py-12 px-4">
+      <div className="max-w-2xl mx-auto w-full">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <Link href="/" className="text-blue-600 hover:text-blue-700 mb-2 inline-block">
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6 sm:mb-8">
+          <div className="min-w-0">
+            <Link href="/" className="text-blue-600 hover:text-blue-700 mb-2 inline-block text-sm">
               ← Back to Dashboard
             </Link>
-            <h1 className="text-4xl font-bold text-gray-900">🚨 Allergies</h1>
+            <h1 className="text-2xl sm:text-4xl font-bold text-gray-900">🚨 Allergies</h1>
           </div>
-          <button onClick={() => setShowForm(true)} className="btn-primary">
+          <button onClick={() => setShowForm(true)} className="btn-primary whitespace-nowrap flex-shrink-0">
             + Add Allergy
           </button>
         </div>
@@ -48,11 +48,11 @@ export default function AllergiesPage() {
             <p className="text-gray-600">No allergies recorded yet</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {allergies.map((allergy) => (
-              <div key={allergy.id} className="card flex justify-between items-start">
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-gray-900">{allergy.allergen}</h3>
+              <div key={allergy.id} className="card flex flex-col sm:flex-row justify-between items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-bold text-gray-900 break-words">{allergy.allergen}</h3>
                   {allergy.severity && (
                     <p className="text-sm font-semibold text-gray-600 mb-1">
                       Severity:{" "}
@@ -70,12 +70,12 @@ export default function AllergiesPage() {
                     </p>
                   )}
                   {allergy.reaction && (
-                    <p className="text-gray-600">
+                    <p className="text-sm text-gray-600">
                       <strong>Reaction:</strong> {allergy.reaction}
                     </p>
                   )}
                   {allergy.notes && (
-                    <p className="text-gray-600 text-sm mt-2">
+                    <p className="text-xs text-gray-600 mt-2">
                       <strong>Notes:</strong> {allergy.notes}
                     </p>
                   )}
@@ -85,7 +85,7 @@ export default function AllergiesPage() {
                 </div>
                 <button
                   onClick={() => deleteRecord(allergy.id)}
-                  className="btn-danger text-sm"
+                  className="btn-danger text-sm whitespace-nowrap flex-shrink-0"
                 >
                   Delete
                 </button>
@@ -134,8 +134,8 @@ function AllergyForm({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Add Allergy</h2>
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">Add Allergy</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="label">Allergen *</label>
@@ -185,7 +185,7 @@ function AllergyForm({
             />
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 pt-4">
             <button
               type="submit"
               disabled={loading}

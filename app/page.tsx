@@ -46,18 +46,18 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-50 py-8 sm:py-12 px-4">
+      <div className="max-w-2xl mx-auto w-full">
         {/* Header */}
-        <div className="mb-8 flex justify-between items-start">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Health Wallet</h1>
-            <p className="text-gray-600">Your portable health record</p>
+        <div className="mb-8 flex justify-between items-start gap-4">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-1 break-words">Health Wallet</h1>
+            <p className="text-sm sm:text-base text-gray-600">Your portable health record</p>
           </div>
           <button
             onClick={handleReset}
             disabled={resetting}
-            className="text-sm btn-secondary"
+            className="text-xs sm:text-sm btn-secondary whitespace-nowrap flex-shrink-0"
             title="Reset wallet to demo data (for testing)"
           >
             {resetting ? "Resetting..." : "🔄 Reset"}
@@ -65,72 +65,72 @@ export default function Home() {
         </div>
 
         {/* Patient Info */}
-        <div className="card mb-8">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">{patient.name}</h2>
-              <p className="text-gray-600">
+        <div className="card mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{patient.name}</h2>
+              <p className="text-sm text-gray-600">
                 DOB: {new Date(patient.dateOfBirth).toLocaleDateString()}
               </p>
             </div>
-            <Link href="/profile" className="btn-secondary">
+            <Link href="/profile" className="btn-secondary whitespace-nowrap flex-shrink-0">
               Edit Profile
             </Link>
           </div>
 
           {patient.emergencyContact && (
-            <div className="bg-blue-50 p-3 rounded border border-blue-200">
-              <p className="text-sm font-semibold text-gray-700">Emergency Contact</p>
+            <div className="bg-blue-50 p-3 rounded border border-blue-200 text-sm">
+              <p className="text-xs font-semibold text-gray-700 uppercase">Emergency Contact</p>
               <p className="text-gray-600">
                 {patient.emergencyContact.name} ({patient.emergencyContact.relationship})
               </p>
-              <p className="text-gray-600">{patient.emergencyContact.phone}</p>
+              <p className="text-gray-600 break-all">{patient.emergencyContact.phone}</p>
             </div>
           )}
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <div className="card text-center">
-            <p className="text-3xl font-bold text-red-600">{allergies.length}</p>
-            <p className="text-gray-600">Allergies</p>
+        <div className="grid grid-cols-3 gap-3 mb-6 sm:mb-8">
+          <div className="card text-center p-4">
+            <p className="text-2xl sm:text-3xl font-bold text-red-600">{allergies.length}</p>
+            <p className="text-xs sm:text-sm text-gray-600">Allergies</p>
           </div>
-          <div className="card text-center">
-            <p className="text-3xl font-bold text-blue-600">{medications.length}</p>
-            <p className="text-gray-600">Medications</p>
+          <div className="card text-center p-4">
+            <p className="text-2xl sm:text-3xl font-bold text-blue-600">{medications.length}</p>
+            <p className="text-xs sm:text-sm text-gray-600">Medications</p>
           </div>
-          <div className="card text-center">
-            <p className="text-3xl font-bold text-green-600">{conditions.length}</p>
-            <p className="text-gray-600">Conditions</p>
+          <div className="card text-center p-4">
+            <p className="text-2xl sm:text-3xl font-bold text-green-600">{conditions.length}</p>
+            <p className="text-xs sm:text-sm text-gray-600">Conditions</p>
           </div>
         </div>
 
         {/* Main Actions */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          <Link href="/records/allergies" className="card text-center hover:shadow-lg transition">
-            <p className="text-lg font-bold text-gray-900 mb-2">🚨 Allergies</p>
-            <p className="text-sm text-gray-600">View & manage</p>
+        <div className="grid grid-cols-2 gap-3 mb-6 sm:mb-8">
+          <Link href="/records/allergies" className="card text-center hover:shadow-lg transition p-4 sm:p-6">
+            <p className="text-base sm:text-lg font-bold text-gray-900 mb-1">🚨 Allergies</p>
+            <p className="text-xs sm:text-sm text-gray-600">View & manage</p>
           </Link>
-          <Link href="/records/medications" className="card text-center hover:shadow-lg transition">
-            <p className="text-lg font-bold text-gray-900 mb-2">💊 Medications</p>
-            <p className="text-sm text-gray-600">View & manage</p>
+          <Link href="/records/medications" className="card text-center hover:shadow-lg transition p-4 sm:p-6">
+            <p className="text-base sm:text-lg font-bold text-gray-900 mb-1">💊 Medications</p>
+            <p className="text-xs sm:text-sm text-gray-600">View & manage</p>
           </Link>
-          <Link href="/records/conditions" className="card text-center hover:shadow-lg transition">
-            <p className="text-lg font-bold text-gray-900 mb-2">🏥 Conditions</p>
-            <p className="text-sm text-gray-600">View & manage</p>
+          <Link href="/records/conditions" className="card text-center hover:shadow-lg transition p-4 sm:p-6">
+            <p className="text-base sm:text-lg font-bold text-gray-900 mb-1">🏥 Conditions</p>
+            <p className="text-xs sm:text-sm text-gray-600">View & manage</p>
           </Link>
-          <Link href="/documents" className="card text-center hover:shadow-lg transition">
-            <p className="text-lg font-bold text-gray-900 mb-2">📄 Documents</p>
-            <p className="text-sm text-gray-600">View & manage</p>
+          <Link href="/documents" className="card text-center hover:shadow-lg transition p-4 sm:p-6">
+            <p className="text-base sm:text-lg font-bold text-gray-900 mb-1">📄 Documents</p>
+            <p className="text-xs sm:text-sm text-gray-600">View & manage</p>
           </Link>
         </div>
 
         {/* Emergency & Share */}
-        <div className="grid grid-cols-2 gap-4">
-          <Link href="/summary/emergency" className="btn-primary text-center block">
+        <div className="grid grid-cols-1 gap-3">
+          <Link href="/summary/emergency" className="btn-primary text-center block py-3 w-full">
             🆘 Emergency Summary
           </Link>
-          <Link href="/share" className="btn-primary text-center block">
+          <Link href="/share" className="btn-primary text-center block py-3 w-full">
             📤 Share Health Record
           </Link>
         </div>

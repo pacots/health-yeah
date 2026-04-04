@@ -71,21 +71,21 @@ ${
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-3xl mx-auto">
+    <div className="min-h-screen bg-gray-50 py-8 sm:py-12 px-4">
+      <div className="max-w-2xl mx-auto w-full">
         {/* Header */}
-        <div className="mb-8">
-          <Link href="/" className="text-blue-600 hover:text-blue-700 mb-2 inline-block">
+        <div className="mb-6 sm:mb-8">
+          <Link href="/" className="text-blue-600 hover:text-blue-700 mb-2 inline-block text-sm">
             ← Back to Dashboard
           </Link>
-          <h1 className="text-4xl font-bold text-gray-900">🆘 Emergency Summary</h1>
-          <p className="text-gray-600 mt-2">Share this information in emergencies</p>
+          <h1 className="text-2xl sm:text-4xl font-bold text-gray-900">🆘 Emergency Summary</h1>
+          <p className="text-sm text-gray-600 mt-2">Share this information in emergencies</p>
         </div>
 
         {/* Copy Button */}
         <button
           onClick={handleCopy}
-          className={`mb-6 px-4 py-2 rounded-lg font-medium transition ${
+          className={`mb-6 px-4 py-2 rounded-lg font-medium transition text-sm sm:text-base ${
             copied
               ? "bg-green-600 text-white"
               : "bg-blue-600 text-white hover:bg-blue-700"
@@ -95,43 +95,43 @@ ${
         </button>
 
         {/* Summary Card */}
-        <div className="card bg-red-50 border-2 border-red-200 p-6">
-          <h2 className="text-2xl font-bold text-red-900 mb-4">🚨 CRITICAL INFORMATION</h2>
+        <div className="card bg-red-50 border-2 border-red-200 p-4 sm:p-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-red-900 mb-4">🚨 CRITICAL INFORMATION</h2>
 
           {/* Patient ID */}
-          <div className="mb-6 p-4 bg-white rounded border-2 border-red-300">
-            <p className="text-sm font-semibold text-gray-600">PATIENT</p>
-            <p className="text-2xl font-bold text-gray-900">{patient.name}</p>
-            <p className="text-gray-600">
+          <div className="mb-4 p-4 bg-white rounded border-2 border-red-300">
+            <p className="text-xs font-semibold text-gray-600 uppercase">Patient</p>
+            <p className="text-lg sm:text-2xl font-bold text-gray-900 break-words">{patient.name}</p>
+            <p className="text-sm text-gray-600">
               DOB: {new Date(patient.dateOfBirth).toLocaleDateString()}
             </p>
           </div>
 
           {/* Emergency Contact */}
           {patient.emergencyContact && (
-            <div className="mb-6 p-4 bg-white rounded">
-              <p className="text-sm font-semibold text-gray-600 mb-2">EMERGENCY CONTACT</p>
-              <p className="font-bold text-lg text-gray-900">
+            <div className="mb-4 p-4 bg-white rounded">
+              <p className="text-xs font-semibold text-gray-600 uppercase mb-2">Emergency Contact</p>
+              <p className="font-bold text-base sm:text-lg text-gray-900 break-words">
                 {patient.emergencyContact.name}
               </p>
-              <p className="text-gray-600">{patient.emergencyContact.relationship}</p>
-              <p className="text-gray-600 font-mono">{patient.emergencyContact.phone}</p>
+              <p className="text-sm text-gray-600">{patient.emergencyContact.relationship}</p>
+              <p className="text-sm text-gray-600 font-mono break-all">{patient.emergencyContact.phone}</p>
             </div>
           )}
 
           {/* Allergies */}
-          <div className="mb-6 p-4 bg-white rounded border-l-4 border-red-600">
-            <p className="text-sm font-semibold text-gray-600 mb-2">⚠️ ALLERGIES</p>
+          <div className="mb-4 p-4 bg-white rounded border-l-4 border-red-600">
+            <p className="text-xs font-semibold text-gray-600 uppercase mb-2">⚠️ Allergies</p>
             {allergies.length === 0 ? (
-              <p className="text-gray-600">No known allergies</p>
+              <p className="text-sm text-gray-600">No known allergies</p>
             ) : (
               <ul className="space-y-2">
                 {allergies.map((a) => (
-                  <li key={a.id} className="text-gray-900 font-semibold">
-                    {(a as any).allergen}
+                  <li key={a.id} className="text-sm text-gray-900">
+                    <strong className="break-words">{(a as any).allergen}</strong>
                     {(a as any).severity && (
                       <span
-                        className={`ml-2 text-sm font-bold ${
+                        className={`ml-2 text-xs font-bold ${
                           (a as any).severity === "severe"
                             ? "text-red-600"
                             : (a as any).severity === "moderate"
@@ -143,7 +143,7 @@ ${
                       </span>
                     )}
                     {(a as any).reaction && (
-                      <p className="text-sm text-gray-600">Reaction: {(a as any).reaction}</p>
+                      <p className="text-xs text-gray-600">Reaction: {(a as any).reaction}</p>
                     )}
                   </li>
                 ))}
@@ -152,21 +152,18 @@ ${
           </div>
 
           {/* Medications */}
-          <div className="mb-6 p-4 bg-white rounded border-l-4 border-blue-600">
-            <p className="text-sm font-semibold text-gray-600 mb-2">💊 MEDICATIONS</p>
+          <div className="mb-4 p-4 bg-white rounded border-l-4 border-blue-600">
+            <p className="text-xs font-semibold text-gray-600 uppercase mb-2">💊 Medications</p>
             {medications.length === 0 ? (
-              <p className="text-gray-600">No current medications</p>
+              <p className="text-sm text-gray-600">No current medications</p>
             ) : (
               <ul className="space-y-2">
                 {medications.map((m) => (
-                  <li key={m.id} className="text-gray-900">
-                    <strong>{(m as any).name}</strong>
-                    <p className="text-sm text-gray-600">
+                  <li key={m.id} className="text-sm text-gray-900">
+                    <strong className="break-words">{(m as any).name}</strong>
+                    <p className="text-xs text-gray-600">
                       {(m as any).dosage} - {(m as any).frequency}
                     </p>
-                    {(m as any).indication && (
-                      <p className="text-sm text-gray-600">Indication: {(m as any).indication}</p>
-                    )}
                   </li>
                 ))}
               </ul>
@@ -175,15 +172,15 @@ ${
 
           {/* Conditions */}
           <div className="p-4 bg-white rounded border-l-4 border-green-600">
-            <p className="text-sm font-semibold text-gray-600 mb-2">🏥 ACTIVE CONDITIONS</p>
+            <p className="text-xs font-semibold text-gray-600 uppercase mb-2">🏥 Active Conditions</p>
             {conditions.length === 0 ? (
-              <p className="text-gray-600">No chronic conditions reported</p>
+              <p className="text-sm text-gray-600">No chronic conditions reported</p>
             ) : (
               <ul className="space-y-2">
                 {conditions.map((c) => (
-                  <li key={c.id} className="text-gray-900">
-                    <strong>{(c as any).name}</strong>
-                    <p className="text-sm text-gray-600">Status: {(c as any).status}</p>
+                  <li key={c.id} className="text-sm text-gray-900">
+                    <strong className="break-words">{(c as any).name}</strong>
+                    <p className="text-xs text-gray-600">Status: {(c as any).status}</p>
                   </li>
                 ))}
               </ul>
@@ -192,11 +189,11 @@ ${
         </div>
 
         {/* Actions */}
-        <div className="mt-8 flex gap-4">
-          <Link href="/" className="btn-secondary flex-1 text-center">
+        <div className="mt-6 sm:mt-8 flex flex-col gap-3">
+          <Link href="/" className="btn-secondary text-center block">
             Back to Dashboard
           </Link>
-          <Link href="/share" className="btn-primary flex-1 text-center">
+          <Link href="/share" className="btn-primary text-center block">
             Share This Record
           </Link>
         </div>

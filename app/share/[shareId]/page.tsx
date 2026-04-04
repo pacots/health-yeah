@@ -66,15 +66,15 @@ export default function ProviderViewPage({ params }: { params: Promise<{ shareId
     share.scope === "emergency" ? "EMERGENCY" : "CONTINUITY OF CARE";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-gray-50 py-12 px-4">
-      <div className="max-w-3xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-gray-50 py-8 sm:py-12 px-4">
+      <div className="max-w-2xl mx-auto w-full">
         {/* Header */}
         <div
-          className={`card mb-8 border-l-4 ${
+          className={`card mb-6 sm:mb-8 border-l-4 ${
             share.scope === "emergency" ? "border-l-red-600 bg-red-50" : "border-l-blue-600"
-          }`}
+          } p-4`}
         >
-          <p className="text-sm font-semibold text-gray-600 mb-1">
+          <p className="text-xs sm:text-sm font-semibold text-gray-600 mb-1">
             {share.scope === "emergency" ? "🆘" : "📋"} {scopeLabel} SHARED RECORD
           </p>
           <p className="text-xs text-gray-500">
@@ -83,23 +83,23 @@ export default function ProviderViewPage({ params }: { params: Promise<{ shareId
         </div>
 
         {/* Patient Identity */}
-        <div className="card bg-white border-2 border-gray-300 p-6 mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+        <div className="card bg-white border-2 border-gray-300 p-4 sm:p-6 mb-4 sm:mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 break-words">
             {share.patientSnapshot.name}
           </h2>
-          <p className="text-gray-600 mb-4">
+          <p className="text-sm text-gray-600 mb-4">
             <strong>DOB:</strong>{" "}
             {new Date(share.patientSnapshot.dateOfBirth).toLocaleDateString()}
           </p>
 
           {share.patientSnapshot.emergencyContact && (
-            <div className="bg-gray-50 p-4 rounded border border-gray-200">
-              <p className="font-semibold text-gray-900 mb-2">Emergency Contact</p>
-              <p className="text-gray-600">
+            <div className="bg-gray-50 p-3 sm:p-4 rounded border border-gray-200">
+              <p className="font-semibold text-gray-900 mb-2 text-sm">Emergency Contact</p>
+              <p className="text-sm text-gray-600 break-words">
                 {share.patientSnapshot.emergencyContact.name} (
                 {share.patientSnapshot.emergencyContact.relationship})
               </p>
-              <p className="font-mono text-gray-600">
+              <p className="font-mono text-sm text-gray-600 break-all">
                 {share.patientSnapshot.emergencyContact.phone}
               </p>
             </div>
