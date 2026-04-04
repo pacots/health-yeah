@@ -13,17 +13,18 @@ export default function MedicationsPage() {
   const medications = records.filter((r) => r.type === "medication") as MedicationRecord[];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="page-container">
+      <div className="page-max-width">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <Link href="/" className="text-blue-600 hover:text-blue-700 mb-2 inline-block">
+        <div className="page-header flex flex-col sm:flex-row justify-between items-start gap-4">
+          <div className="min-w-0">
+            <Link href="/" className="back-link">
               ← Back to Dashboard
             </Link>
-            <h1 className="text-4xl font-bold text-gray-900">💊 Medications</h1>
+            <h1 className="page-title">Medications</h1>
+            <p className="page-subtitle">Your current medications and supplements</p>
           </div>
-          <button onClick={() => setShowForm(true)} className="btn-primary">
+          <button onClick={() => setShowForm(true)} className="btn-primary btn-sm whitespace-nowrap flex-shrink-0">
             + Add Medication
           </button>
         </div>
@@ -41,42 +42,43 @@ export default function MedicationsPage() {
 
         {/* List */}
         {medications.length === 0 ? (
-          <div className="card text-center py-8">
-            <p className="text-gray-600">No medications recorded yet</p>
+          <div className="empty-state">
+            <p className="empty-state-icon">💊</p>
+            <p className="text-xl font-semibold text-slate-900 mb-2">No medications recorded</p>
+            <p className="empty-state-text">Add your current medications to your health record</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="record-list">
             {medications.map((med) => (
-              <div key={med.id} className="card flex justify-between items-start">
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-gray-900">{med.name}</h3>
-                  <p className="text-gray-600">
-                    <strong>Dosage:</strong> {med.dosage}
-                  </p>
-                  <p className="text-gray-600">
-                    <strong>Frequency:</strong> {med.frequency}
-                  </p>
-                  {med.indication && (
-                    <p className="text-gray-600">
-                      <strong>Indication:</strong> {med.indication}
+              <div key={med.id} className="record-list-item record-item-medication">
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                  <div className="flex-1">
+                    <h3 className="record-list-item-title">{med.name}</h3>
+                    <p className="text-sm text-slate-700 font-semibold mt-2 mb-1">
+                      {med.dosage} • {med.frequency}
                     </p>
-                  )}
-                  {med.notes && (
-                    <p className="text-gray-600 text-sm mt-2">
-                      <strong>Notes:</strong> {med.notes}
-                    </p>
-                  )}
-                  <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-                    <SourceBadge source={med.source} />
-                    <LastUpdated timestamp={med.updatedAt} />
+                    {med.indication && (
+                      <p className="text-sm text-slate-600 mb-2">
+                        <strong>Reason:</strong> {med.indication}
+                      </p>
+                    )}
+                    {med.notes && (
+                      <p className="text-xs text-slate-600 mb-3 bg-slate-50 p-2 rounded border border-slate-200">
+                        {med.notes}
+                      </p>
+                    )}
+                    <div className="metadata-line">
+                      <SourceBadge source={med.source} />
+                      <LastUpdated timestamp={med.updatedAt} />
+                    </div>
                   </div>
+                  <button
+                    onClick={() => deleteRecord(med.id)}
+                    className="btn-danger btn-sm text-sm whitespace-nowrap flex-shrink-0 mt-3 sm:mt-0"
+                  >
+                    Delete
+                  </button>
                 </div>
-                <button
-                  onClick={() => deleteRecord(med.id)}
-                  className="btn-danger text-sm"
-                >
-                  Delete
-                </button>
               </div>
             ))}
           </div>

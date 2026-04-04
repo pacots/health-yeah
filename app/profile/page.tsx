@@ -56,29 +56,30 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 sm:py-12 px-4">
-      <div className="max-w-2xl mx-auto w-full">
+    <div className="page-container">
+      <div className="page-max-width">
         {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <Link href="/" className="text-blue-600 hover:text-blue-700 mb-2 inline-block text-sm">
+        <div className="page-header">
+          <Link href="/" className="back-link">
             ← Back to Dashboard
           </Link>
-          <h1 className="text-2xl sm:text-4xl font-bold text-gray-900">👤 Patient Profile</h1>
+          <h1 className="page-title">Patient Profile</h1>
         </div>
 
         {/* Success Message */}
         {saved && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-3 sm:px-4 py-2 sm:py-3 rounded mb-6 text-sm">
-            Profile saved successfully!
+          <div className="alert-success mb-6 text-sm">
+            ✓ Profile saved successfully
           </div>
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="card space-y-6">
-          <div>
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">Personal Information</h2>
+        <form onSubmit={handleSubmit} className="card">
+          {/* Personal Information Section */}
+          <div className="mb-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Personal Information</h2>
 
-            <div className="mb-4">
+            <div className="form-group">
               <label className="label">Full Name</label>
               <input
                 type="text"
@@ -90,7 +91,7 @@ export default function ProfilePage() {
               />
             </div>
 
-            <div className="mb-4">
+            <div className="form-group">
               <label className="label">Date of Birth</label>
               <input
                 type="date"
@@ -102,7 +103,7 @@ export default function ProfilePage() {
               />
             </div>
 
-            <div>
+            <div className="form-group">
               <label className="label">Preferred Language</label>
               <select
                 name="preferredLanguage"
@@ -118,12 +119,13 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <hr className="border-t border-gray-300" />
+          <div className="border-t border-gray-200 my-8"></div>
 
-          <div>
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">Emergency Contact</h2>
+          {/* Emergency Contact Section */}
+          <div className="mb-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Emergency Contact</h2>
 
-            <div className="mb-4">
+            <div className="form-group">
               <label className="label">Name</label>
               <input
                 type="text"
@@ -134,7 +136,7 @@ export default function ProfilePage() {
               />
             </div>
 
-            <div className="mb-4">
+            <div className="form-group">
               <label className="label">Relationship</label>
               <input
                 type="text"
@@ -146,7 +148,7 @@ export default function ProfilePage() {
               />
             </div>
 
-            <div>
+            <div className="form-group">
               <label className="label">Phone Number</label>
               <input
                 type="tel"
@@ -158,7 +160,8 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 pt-4">
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200">
             <button
               type="submit"
               disabled={loading}

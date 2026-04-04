@@ -14,17 +14,18 @@ export default function AllergiesPage() {
   const allergies = records.filter((r) => r.type === "allergy") as AllergyRecord[];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 sm:py-12 px-4">
-      <div className="max-w-2xl mx-auto w-full">
+    <div className="page-container">
+      <div className="page-max-width">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6 sm:mb-8">
+        <div className="page-header flex flex-col sm:flex-row justify-between items-start gap-4">
           <div className="min-w-0">
-            <Link href="/" className="text-blue-600 hover:text-blue-700 mb-2 inline-block text-sm">
+            <Link href="/" className="back-link">
               ← Back to Dashboard
             </Link>
-            <h1 className="text-2xl sm:text-4xl font-bold text-gray-900">🚨 Allergies</h1>
+            <h1 className="page-title">Allergies</h1>
+            <p className="page-subtitle">Your documented allergies & sensitivities</p>
           </div>
-          <button onClick={() => setShowForm(true)} className="btn-primary whitespace-nowrap flex-shrink-0">
+          <button onClick={() => setShowForm(true)} className="btn-primary btn-sm whitespace-nowrap flex-shrink-0">
             + Add Allergy
           </button>
         </div>
@@ -34,7 +35,6 @@ export default function AllergiesPage() {
           <AllergyForm
             onClose={() => {
               setShowForm(false);
-              setEditingId(null);
             }}
             onSave={async (data) => {
               await addRecord(data);
@@ -45,52 +45,61 @@ export default function AllergiesPage() {
 
         {/* List */}
         {allergies.length === 0 ? (
-          <div className="card text-center py-8">
-            <p className="text-gray-600">No allergies recorded yet</p>
+          <div className="empty-state">
+            <p className="empty-state-icon">🚨</p>
+            <p className="text-xl font-semibold text-slate-900 mb-2">No allergies recorded</p>
+            <p className="empty-state-text">Add your known allergies to your health record</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="record-list">
             {allergies.map((allergy) => (
-              <div key={allergy.id} className="card flex flex-col sm:flex-row justify-between items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-bold text-gray-900 break-words">{allergy.allergen}</h3>
-                  {allergy.severity && (
-                    <p className="text-sm font-semibold text-gray-600 mb-1">
-                      Severity:{" "}
-                      <span
-                        className={`${
-                          allergy.severity === "severe"
-                            ? "text-red-600"
-                            : allergy.severity === "moderate"
-                            ? "text-yellow-600"
-                            : "text-green-600"
-                        }`}
-                      >
-                        {allergy.severity}
-                      </span>
-                    </p>
-                  )}
-                  {allergy.reaction && (
-                    <p className="text-sm text-gray-600">
-                      <strong>Reaction:</strong> {allergy.reaction}
-                    </p>
-                  )}
-                  {allergy.notes && (
-                    <p className="text-xs text-gray-600 mt-2">
-                      <strong>Notes:</strong> {allergy.notes}
-                    </p>
-                  )}
-                  <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-                    <SourceBadge source={allergy.source} />
-                    <LastUpdated timestamp={allergy.updatedAt} />
+              <div key={allergy.id} className="record-list-item record-item-allergy">
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="record-list-item-title">{allergy.allergen}</h3>
+
+                    {allergy.severity && (
+                      <div className="flex items-center gap-2 mt-3 mb-2">
+                        <span className="text-xs font-bold text-slate-600 uppercase">Severity:</span>
+                        <span
+                          className={`text-sm font-bold ${
+                            allergy.severity === "severe"
+                              ? "text-rose-700"
+                              : allergy.severity === "moderate"
+                              ? "text-amber-700"
+                              : "text-emerald-700"
+                          }`}
+                        >
+                          {allergy.severity}
+                        </span>
+                      </div>
+                    )}
+
+                    {allergy.reaction && (
+                      <p className="text-sm text-slate-700 mb-2">
+                        <strong>Reaction:</strong> {allergy.reaction}
+                      </p>
+                    )}
+
+                    {allergy.notes && (
+                      <p className="text-xs text-slate-600 mb-3 bg-slate-50 p-2 rounded border border-slate-200">
+                        {allergy.notes}
+                      </p>
+                    )}
+
+                    <div className="metadata-line">
+                      <SourceBadge source={allergy.source} />
+                      <LastUpdated timestamp={allergy.updatedAt} />
+                    </div>
                   </div>
+
+                  <button
+                    onClick={() => deleteRecord(allergy.id)}
+                    className="btn-danger btn-sm text-sm whitespace-nowrap flex-shrink-0 mt-3 sm:mt-0"
+                  >
+                    Delete
+                  </button>
                 </div>
-                <button
-                  onClick={() => deleteRecord(allergy.id)}
-                  className="btn-danger text-sm whitespace-nowrap flex-shrink-0"
-                >
-                  Delete
-                </button>
               </div>
             ))}
           </div>

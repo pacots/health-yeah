@@ -27,18 +27,41 @@ export default function SharePage() {
     }
   };
 
+  const handleCopyLink = async (shareId: string) => {
+    const url = `/share/${shareId}`;
+    const fullUrl = window.location.origin + url;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(fullUrl);
+        alert("Share link copied to clipboard!");
+      } else {
+        // Fallback for older browsers
+        const textarea = document.createElement("textarea");
+        textarea.value = fullUrl;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+        alert("Share link copied to clipboard!");
+      }
+    } catch (error) {
+      console.error("Failed to copy:", error);
+      alert("Could not copy link. Share ID: " + shareId);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8 sm:py-12 px-4">
-      <div className="max-w-2xl mx-auto w-full">
+    <div className="page-container">
+      <div className="page-max-width">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6 sm:mb-8">
+        <div className="page-header flex flex-col sm:flex-row justify-between items-start gap-4">
           <div className="min-w-0">
-            <Link href="/" className="text-blue-600 hover:text-blue-700 mb-2 inline-block text-sm">
+            <Link href="/" className="back-link">
               ← Back to Dashboard
             </Link>
-            <h1 className="text-2xl sm:text-4xl font-bold text-gray-900">📤 Share Health Record</h1>
+            <h1 className="page-title">Share Health Record</h1>
           </div>
-          <button onClick={() => setShowForm(true)} className="btn-primary whitespace-nowrap flex-shrink-0">
+          <button onClick={() => setShowForm(true)} className="btn-primary btn-sm whitespace-nowrap flex-shrink-0">
             + Generate Share
           </button>
         </div>
@@ -62,48 +85,43 @@ export default function SharePage() {
         )}
 
         {/* Active Shares */}
-        <div className="mb-6 sm:mb-8">
-          <h2 className="text-lg sm:text-2xl font-bold text-gray-900 mb-4">Active Shares</h2>
+        <div className="section-spacing">
+          <p className="section-header px-0 mb-3">Active Shares</p>
           {shares.length === 0 ? (
-            <div className="card text-center py-8">
-              <p className="text-gray-600 text-sm">No shares created yet</p>
+            <div className="empty-state">
+              <p className="empty-state-text">No shares created yet</p>
             </div>
           ) : (
             <div className="space-y-3">
               {shares.map((share) => (
                 <div key={share.id} className="card">
-                  <div className="flex flex-col sm:flex-row justify-between items-start gap-3 mb-3">
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-3 mb-4">
                     <div className="min-w-0 flex-1">
                       <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-1 break-words">
-                        {share.scope === "emergency" ? "🆘" : "📋"} {share.scope === "emergency" ? "Emergency" : "Continuity of Care"}{" "}
-                        Share
+                        {share.scope === "emergency" ? "Emergency" : "Continuity of Care"} Share
                       </h3>
                       <p className="text-xs text-gray-600">
-                        Created: {new Date(share.createdAt).toLocaleString()}
+                        Created {new Date(share.createdAt).toLocaleString()}
                       </p>
                     </div>
                     <button
                       onClick={() => handleDeleteShare(share.id)}
-                      className="btn-danger text-sm whitespace-nowrap flex-shrink-0"
+                      className="btn-danger btn-sm text-sm whitespace-nowrap flex-shrink-0"
                     >
                       Revoke
                     </button>
                   </div>
 
-                  <div className="bg-gray-50 p-3 rounded mb-3 text-xs sm:text-sm">
-                    <p className="text-gray-600 mb-2">
-                      <strong>Records:</strong> {share.recordSnapshots.length}
+                  <div className="bg-gray-50 p-3 rounded mb-4 text-xs sm:text-sm border border-gray-200">
+                    <p className="text-gray-700 mb-2">
+                      <strong>{share.recordSnapshots.length}</strong> records shared
                     </p>
-                    <p className="font-mono text-gray-500 break-all">ID: {share.id}</p>
+                    <p className="text-code break-all">ID: {share.id}</p>
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-2">
                     <button
-                      onClick={() => {
-                        const url = `/share/${share.id}`;
-                        navigator.clipboard.writeText(window.location.origin + url);
-                        alert("Share link copied!");
-                      }}
+                      onClick={() => handleCopyLink(share.id)}
                       className="btn-secondary flex-1 text-sm"
                     >
                       📋 Copy Link

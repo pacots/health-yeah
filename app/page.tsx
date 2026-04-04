@@ -46,92 +46,102 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 sm:py-12 px-4">
-      <div className="max-w-2xl mx-auto w-full">
-        {/* Header */}
-        <div className="mb-8 flex justify-between items-start gap-4">
+    <div className="page-container">
+      <div className="page-max-width">
+        {/* Header Section */}
+        <div className="page-header flex flex-col sm:flex-row justify-between items-start gap-4">
           <div className="min-w-0">
-            <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-1 break-words">Health Wallet</h1>
-            <p className="text-sm sm:text-base text-gray-600">Your portable health record</p>
+            <p className="text-sm font-semibold text-teal-600 uppercase tracking-widest mb-2">Welcome</p>
+            <h1 className="page-title">Health Wallet</h1>
+            <p className="page-subtitle">Your complete health in one place</p>
           </div>
           <button
             onClick={handleReset}
             disabled={resetting}
-            className="text-xs sm:text-sm btn-secondary whitespace-nowrap flex-shrink-0"
-            title="Reset wallet to demo data (for testing)"
+            className="btn-secondary btn-sm whitespace-nowrap flex-shrink-0"
+            title="Reset wallet to demo data"
           >
             {resetting ? "Resetting..." : "🔄 Reset"}
           </button>
         </div>
 
-        {/* Patient Info */}
-        <div className="card mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
-            <div className="min-w-0 flex-1">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{patient.name}</h2>
-              <p className="text-sm text-gray-600">
-                DOB: {new Date(patient.dateOfBirth).toLocaleDateString()}
+        {/* Patient Card - Premium */}
+        <div className="card-premium section-spacing-narrow">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-6">
+            <div className="flex-1 min-w-0">
+              <p className="section-header mb-2">Patient Identity</p>
+              <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 break-words">{patient.name}</h2>
+              <p className="text-sm text-slate-600 mt-2">
+                Born {new Date(patient.dateOfBirth).toLocaleDateString()}
               </p>
+              {patient.emergencyContact && (
+                <div className="mt-4 p-3 bg-white/80 rounded-lg border border-slate-200">
+                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">Emergency Contact</p>
+                  <p className="font-semibold text-slate-900">{patient.emergencyContact.name}</p>
+                  <p className="text-sm text-slate-600">{patient.emergencyContact.relationship}</p>
+                  <p className="text-base font-mono font-bold text-teal-700 mt-1">{patient.emergencyContact.phone}</p>
+                </div>
+              )}
             </div>
-            <Link href="/profile" className="btn-secondary whitespace-nowrap flex-shrink-0">
+            <Link href="/profile" className="btn-secondary btn-sm whitespace-nowrap flex-shrink-0 self-start sm:self-auto">
               Edit Profile
             </Link>
           </div>
+        </div>
 
-          {patient.emergencyContact && (
-            <div className="bg-blue-50 p-3 rounded border border-blue-200 text-sm">
-              <p className="text-xs font-semibold text-gray-700 uppercase">Emergency Contact</p>
-              <p className="text-gray-600">
-                {patient.emergencyContact.name} ({patient.emergencyContact.relationship})
-              </p>
-              <p className="text-gray-600 break-all">{patient.emergencyContact.phone}</p>
+        {/* Health Summary Stats */}
+        <div className="section-spacing">
+          <p className="section-header">Health Summary</p>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="stat-block">
+              <p className="stat-value text-rose-600">{allergies.length}</p>
+              <p className="stat-label">Allergies</p>
             </div>
-          )}
-        </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-3 gap-3 mb-6 sm:mb-8">
-          <div className="card text-center p-4">
-            <p className="text-2xl sm:text-3xl font-bold text-red-600">{allergies.length}</p>
-            <p className="text-xs sm:text-sm text-gray-600">Allergies</p>
-          </div>
-          <div className="card text-center p-4">
-            <p className="text-2xl sm:text-3xl font-bold text-blue-600">{medications.length}</p>
-            <p className="text-xs sm:text-sm text-gray-600">Medications</p>
-          </div>
-          <div className="card text-center p-4">
-            <p className="text-2xl sm:text-3xl font-bold text-green-600">{conditions.length}</p>
-            <p className="text-xs sm:text-sm text-gray-600">Conditions</p>
+            <div className="stat-block">
+              <p className="stat-value text-sky-600">{medications.length}</p>
+              <p className="stat-label">Active Meds</p>
+            </div>
+            <div className="stat-block">
+              <p className="stat-value text-emerald-600">{conditions.length}</p>
+              <p className="stat-label">Conditions</p>
+            </div>
           </div>
         </div>
 
-        {/* Main Actions */}
-        <div className="grid grid-cols-2 gap-3 mb-6 sm:mb-8">
-          <Link href="/records/allergies" className="card text-center hover:shadow-lg transition p-4 sm:p-6">
-            <p className="text-base sm:text-lg font-bold text-gray-900 mb-1">🚨 Allergies</p>
-            <p className="text-xs sm:text-sm text-gray-600">View & manage</p>
-          </Link>
-          <Link href="/records/medications" className="card text-center hover:shadow-lg transition p-4 sm:p-6">
-            <p className="text-base sm:text-lg font-bold text-gray-900 mb-1">💊 Medications</p>
-            <p className="text-xs sm:text-sm text-gray-600">View & manage</p>
-          </Link>
-          <Link href="/records/conditions" className="card text-center hover:shadow-lg transition p-4 sm:p-6">
-            <p className="text-base sm:text-lg font-bold text-gray-900 mb-1">🏥 Conditions</p>
-            <p className="text-xs sm:text-sm text-gray-600">View & manage</p>
-          </Link>
-          <Link href="/documents" className="card text-center hover:shadow-lg transition p-4 sm:p-6">
-            <p className="text-base sm:text-lg font-bold text-gray-900 mb-1">📄 Documents</p>
-            <p className="text-xs sm:text-sm text-gray-600">View & manage</p>
-          </Link>
+        {/* Medical Records Grid */}
+        <div className="section-spacing">
+          <p className="section-header">Medical Records</p>
+          <div className="dashboard-grid">
+            <Link href="/records/allergies" className="dashboard-card card-accent-rose">
+              <div className="dashboard-card-icon">🚨</div>
+              <p className="dashboard-card-title">Allergies</p>
+              <p className="dashboard-card-desc">{allergies.length} recorded</p>
+            </Link>
+            <Link href="/records/medications" className="dashboard-card card-accent-sky">
+              <div className="dashboard-card-icon">💊</div>
+              <p className="dashboard-card-title">Medications</p>
+              <p className="dashboard-card-desc">{medications.length} active</p>
+            </Link>
+            <Link href="/records/conditions" className="dashboard-card card-accent-emerald">
+              <div className="dashboard-card-icon">🏥</div>
+              <p className="dashboard-card-title">Conditions</p>
+              <p className="dashboard-card-desc">{conditions.length} documented</p>
+            </Link>
+            <Link href="/documents" className="dashboard-card card-accent-amber">
+              <div className="dashboard-card-icon">📄</div>
+              <p className="dashboard-card-title">Documents</p>
+              <p className="dashboard-card-desc">{documents.length} files</p>
+            </Link>
+          </div>
         </div>
 
-        {/* Emergency & Share */}
-        <div className="grid grid-cols-1 gap-3">
-          <Link href="/summary/emergency" className="btn-primary text-center block py-3 w-full">
+        {/* Primary Actions */}
+        <div className="flex flex-col gap-3">
+          <Link href="/summary/emergency" className="btn-primary w-full text-center py-3.5 text-lg font-bold shadow-lg">
             🆘 Emergency Summary
           </Link>
-          <Link href="/share" className="btn-primary text-center block py-3 w-full">
-            📤 Share Health Record
+          <Link href="/share" className="btn-secondary w-full text-center py-3.5 text-lg font-bold">
+            📤 Share Record
           </Link>
         </div>
       </div>

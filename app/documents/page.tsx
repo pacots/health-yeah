@@ -12,17 +12,17 @@ export default function DocumentsPage() {
   const expandedDoc = documents.find((d) => d.id === expandedDocId);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 sm:py-12 px-4">
-      <div className="max-w-2xl mx-auto w-full">
+    <div className="page-container">
+      <div className="page-max-width">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6 sm:mb-8">
+        <div className="page-header flex flex-col sm:flex-row justify-between items-start gap-4">
           <div className="min-w-0">
-            <Link href="/" className="text-blue-600 hover:text-blue-700 mb-2 inline-block text-sm">
+            <Link href="/" className="back-link">
               ← Back to Dashboard
             </Link>
-            <h1 className="text-2xl sm:text-4xl font-bold text-gray-900">📄 Documents</h1>
+            <h1 className="page-title">Documents</h1>
           </div>
-          <button onClick={() => setShowForm(true)} className="btn-primary whitespace-nowrap flex-shrink-0">
+          <button onClick={() => setShowForm(true)} className="btn-primary btn-sm whitespace-nowrap flex-shrink-0">
             + Add Document
           </button>
         </div>
@@ -52,8 +52,8 @@ export default function DocumentsPage() {
 
         {/* List */}
         {documents.length === 0 ? (
-          <div className="card text-center py-8">
-            <p className="text-gray-600">No documents added yet</p>
+          <div className="empty-state">
+            <p className="empty-state-text">No documents added yet</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -67,15 +67,13 @@ export default function DocumentsPage() {
                   <h3 className="text-base sm:text-lg font-bold text-gray-900 break-words flex-1 min-w-0">
                     {doc.title}
                   </h3>
-                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded whitespace-nowrap flex-shrink-0">
-                    View
-                  </span>
+                  <span className="badge badge-blue whitespace-nowrap flex-shrink-0">View</span>
                 </div>
                 <p className="text-gray-600 whitespace-pre-wrap text-xs sm:text-sm mb-3 max-h-24 overflow-hidden line-clamp-4 break-words">
                   {doc.content}
                 </p>
-                <p className="text-xs text-gray-500">
-                  Added: {new Date(doc.createdAt).toLocaleDateString()}
+                <p className="text-metadata">
+                  Added {new Date(doc.createdAt).toLocaleDateString()}
                 </p>
               </button>
             ))}
