@@ -58,18 +58,14 @@ export function ConfirmDialog({
           <button
             onClick={onCancel}
             disabled={isLoading}
-            className="btn-secondary flex-1 text-sm disabled:opacity-50"
+            className="btn-secondary flex-1 text-sm"
           >
             {cancelLabel}
           </button>
           <button
             onClick={handleConfirm}
             disabled={isLoading}
-            className={`flex-1 text-sm font-semibold py-2.5 px-4 rounded-lg transition ${
-              isDangerous
-                ? "bg-red-600 text-white hover:bg-red-700 disabled:bg-red-400"
-                : "bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400"
-            }`}
+            className={isDangerous ? "btn-danger flex-1 text-sm" : "btn-primary flex-1 text-sm"}
           >
             {isLoading ? "Processing..." : confirmLabel}
           </button>
