@@ -4,7 +4,7 @@ import { useApp } from "@/lib/context";
 import Link from "next/link";
 import { useState, useRef } from "react";
 import { AlertTriangle, Pill, Heart, Copy, Share2, Phone, Calendar, X, Download } from "lucide-react";
-import QRCode from "qrcode.react";
+import { QRCodeSVG } from "qrcode.react";
 
 export default function EmergencySummaryPage() {
   const { patient, records, createShare } = useApp();
@@ -98,15 +98,29 @@ ${conditions.length === 0 ? "None" : conditions.map((c) => `• ${(c as any).nam
 
   const handleDownloadQR = () => {
     if (!qrRef.current) return;
-    const canvas = qrRef.current.querySelector("canvas");
-    if (!canvas) return;
-    const url = canvas.toDataURL("image/png");
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `health-wallet-share-${shareCreated}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const svg = qrRef.current.querySelector("svg");
+    if (!svg) return;
+
+    // Convert SVG to data URL
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+      const url = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `health-wallet-share-${shareCreated}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+    img.src = "data:image/svg+xml;base64," + btoa(svgData);
   };
 
   const handleCreateEmergencyShare = async () => {
@@ -316,77 +330,79 @@ ${conditions.length === 0 ? "None" : conditions.map((c) => `• ${(c as any).nam
 
         {/* Share Modal - QR Code Display */}
         {showShareModal && shareUrl && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6 sm:p-8 animate-in fade-in">
-              {/* Header */}
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Share Emergency Record</h2>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-3 sm:p-4 z-50">
+            <div className="bg-white rounded-lg shadow-2xl max-w-md w-full max-h-[calc(100vh-1.5rem)] flex flex-col animate-in fade-in">
+              {/* Header - Fixed */}
+              <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-200 flex-shrink-0">
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900">Share Emergency Record</h2>
                 <button
                   onClick={() => setShowShareModal(false)}
-                  className="p-1 hover:bg-slate-100 rounded-lg transition"
+                  className="p-1 hover:bg-slate-100 rounded-lg transition flex-shrink-0"
                 >
-                  <X size={24} className="text-slate-500" />
+                  <X size={20} className="text-slate-500" />
                 </button>
               </div>
 
-              {/* QR Code */}
-              <div className="bg-slate-50 p-6 rounded-lg mb-6 flex justify-center">
-                <div ref={qrRef}>
-                  <QRCode
-                    value={shareUrl}
-                    size={200}
-                    level="H"
-                    includeMargin={true}
-                    renderAs="canvas"
-                  />
+              {/* Scrollable Content */}
+              <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-4 sm:py-6 space-y-4">
+                {/* QR Code */}
+                <div className="bg-slate-50 p-4 rounded-lg flex justify-center">
+                  <div ref={qrRef}>
+                    <QRCodeSVG
+                      value={shareUrl}
+                      size={160}
+                      level="H"
+                      includeMargin={true}
+                    />
+                  </div>
                 </div>
+
+                {/* Scan Instructions */}
+                <p className="text-xs sm:text-sm text-slate-600 text-center">
+                  Scan this QR code with a smartphone camera or QR scanner to instantly access the provider view.
+                </p>
+
+                {/* Share URL Display */}
+                <div className="bg-slate-50 p-3 rounded-lg break-all">
+                  <p className="text-xs text-slate-500 mb-1 font-semibold">SHARE LINK:</p>
+                  <p className="text-xs font-mono text-slate-700 line-clamp-2">{shareUrl}</p>
+                </div>
+
+                {/* Footer Note */}
+                <p className="text-xs text-slate-500 text-center border-t border-slate-200 pt-3">
+                  Share link valid only during this session. Perfect for emergency scenarios and demos.
+                </p>
               </div>
 
-              {/* Scan Instructions */}
-              <p className="text-sm text-slate-600 text-center mb-6">
-                Scan this QR code with a smartphone camera or QR scanner to instantly access the provider view.
-              </p>
-
-              {/* Share URL Display */}
-              <div className="bg-slate-50 p-3 rounded-lg mb-6 break-all">
-                <p className="text-xs text-slate-500 mb-1 font-semibold">SHARE LINK:</p>
-                <p className="text-xs font-mono text-slate-700">{shareUrl}</p>
-              </div>
-
-              {/* Actions */}
-              <div className="space-y-3">
+              {/* Actions - Fixed */}
+              <div className="p-4 sm:p-6 border-t border-slate-200 space-y-2.5 flex-shrink-0">
                 <button
                   onClick={handleCopyShareUrl}
-                  className={`w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-semibold transition ${
+                  className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold transition ${
                     urlCopied
                       ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
                       : "bg-blue-600 text-white hover:bg-blue-700"
                   }`}
                 >
-                  <Copy size={18} />
-                  {urlCopied ? "✓ Copied to Clipboard" : "Copy Link"}
+                  <Copy size={16} />
+                  {urlCopied ? "✓ Copied" : "Copy Link"}
                 </button>
 
                 <button
                   onClick={handleDownloadQR}
-                  className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-semibold bg-slate-200 text-slate-800 hover:bg-slate-300 transition"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold bg-slate-200 text-slate-800 hover:bg-slate-300 transition"
                 >
-                  <Download size={18} />
-                  Download QR Code
+                  <Download size={16} />
+                  Download QR
                 </button>
 
                 <button
                   onClick={() => setShowShareModal(false)}
-                  className="w-full py-2 px-4 rounded-lg font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition"
+                  className="w-full py-2.5 px-4 rounded-lg text-sm font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition"
                 >
                   Close
                 </button>
               </div>
-
-              {/* Footer Note */}
-              <p className="text-xs text-slate-500 text-center mt-6 border-t border-slate-200 pt-4">
-                This share link is valid only during your current session. Perfect for emergency scenarios and demos.
-              </p>
             </div>
           </div>
         )}

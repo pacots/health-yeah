@@ -5,6 +5,7 @@ import { useApp } from "@/lib/context";
 import { AllergyRecord } from "@/lib/types";
 import Link from "next/link";
 import { AlertTriangle, Trash2, Plus } from "lucide-react";
+import { SourceBadge, LastUpdated } from "@/lib/metadata-badges";
 
 export default function AllergiesPage() {
   const { records, addRecord, deleteRecord } = useApp();
