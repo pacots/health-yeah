@@ -75,3 +75,11 @@ export type Share = {
   createdAt: number;
   expiresAt?: number;
 };
+
+// Single wallet object for atomic persistence
+export type Wallet = {
+  patient: Patient;
+  records: Record[];
+  documents: Document[];
+  shares: { [shareId: string]: Share };
+};

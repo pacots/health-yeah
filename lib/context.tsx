@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { Patient, Record, Document, Share } from "./types";
+import { Patient, Record, Document, Share, Wallet } from "./types";
 import { storage, generateShareId } from "./storage";
 
 type AppContextType = {
@@ -31,7 +31,7 @@ type AppContextType = {
   deleteShare: (shareId: string) => Promise<void>;
 
   // Utility
-  initialize: () => Promise<void>;
+  resetToDemo: () => Promise<void>;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -42,24 +42,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Initialize app
-  const initialize = async () => {
-    setLoading(true);
-    try {
-      const { patient: p, records: r, documents: d } = await storage.initializeWithDemoData();
-      setPatient(p);
-      setRecords(r);
-      setDocuments(d);
-    } catch (error) {
-      console.error("Failed to initialize:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Initialize app - load wallet once
   useEffect(() => {
-    initialize();
+    const initialize = async () => {
+      try {
+        const wallet = await storage.initializeWallet();
+        setPatient(wallet.patient);
+        setRecords(wallet.records);
+        setDocuments(wallet.documents);
+      } catch (error) {
+        console.error("Failed to initialize wallet:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Only run on client
+    if (typeof window !== "undefined") {
+      initialize();
+    }
   }, []);
+
+  // Persist entire wallet after any change
+  const persistWallet = async (updates: {
+    patient?: Patient;
+    records?: Record[];
+    documents?: Document[];
+  }) => {
+    const wallet: Wallet = {
+      patient: updates.patient ?? patient!,
+      records: updates.records ?? records,
+      documents: updates.documents ?? documents,
+      shares: (await storage.getWallet())?.shares || {},
+    };
+    await storage.setWallet(wallet);
+  };
 
   // Patient actions
   const updatePatient = async (updatedPatient: Patient) => {
@@ -68,7 +85,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updatedAt: Date.now(),
     };
     setPatient(patientWithTimestamp);
-    await storage.setPatient(patientWithTimestamp);
+    await persistWallet({ patient: patientWithTimestamp });
   };
 
   // Record actions
@@ -78,10 +95,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       id: Math.random().toString(36).substring(2, 11),
       createdAt: Date.now(),
       updatedAt: Date.now(),
-    };
+    } as Record;
     const updatedRecords = [...records, newRecord];
     setRecords(updatedRecords);
-    await storage.setRecords(updatedRecords);
+    await persistWallet({ records: updatedRecords });
   };
 
   const updateRecord = async (updatedRecord: Record) => {
@@ -91,13 +108,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     const updatedRecords = records.map((r) => (r.id === recordWithTimestamp.id ? recordWithTimestamp : r));
     setRecords(updatedRecords);
-    await storage.setRecords(updatedRecords);
+    await persistWallet({ records: updatedRecords });
   };
 
   const deleteRecord = async (id: string) => {
     const updatedRecords = records.filter((r) => r.id !== id);
     setRecords(updatedRecords);
-    await storage.setRecords(updatedRecords);
+    await persistWallet({ records: updatedRecords });
   };
 
   // Document actions
@@ -110,7 +127,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     const updatedDocuments = [...documents, newDocument];
     setDocuments(updatedDocuments);
-    await storage.setDocuments(updatedDocuments);
+    await persistWallet({ documents: updatedDocuments });
   };
 
   const updateDocument = async (updatedDocument: Document) => {
@@ -122,13 +139,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       d.id === documentWithTimestamp.id ? documentWithTimestamp : d
     );
     setDocuments(updatedDocuments);
-    await storage.setDocuments(updatedDocuments);
+    await persistWallet({ documents: updatedDocuments });
   };
 
   const deleteDocument = async (id: string) => {
     const updatedDocuments = documents.filter((d) => d.id !== id);
     setDocuments(updatedDocuments);
-    await storage.setDocuments(updatedDocuments);
+    await persistWallet({ documents: updatedDocuments });
   };
 
   // Share actions
@@ -136,8 +153,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!patient) throw new Error("No patient found");
 
     const selectedRecords = records.filter((r) => selectedRecordIds.includes(r.id));
-    const selectedDocuments =
-      scope === "continuity" ? documents.filter((d) => selectedRecordIds.includes(d.id)) : [];
+    const selectedDocuments = scope === "continuity" ? documents : [];
 
     const share: Share = {
       id: generateShareId(),
@@ -164,6 +180,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await storage.deleteShare(shareId);
   };
 
+  // Reset to demo data
+  const resetToDemo = async () => {
+    const wallet = await storage.resetToDemoData();
+    setPatient(wallet.patient);
+    setRecords(wallet.records);
+    setDocuments(wallet.documents);
+  };
+
   const value: AppContextType = {
     patient,
     records,
@@ -180,7 +204,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     getShare,
     getAllShares,
     deleteShare,
-    initialize,
+    resetToDemo,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

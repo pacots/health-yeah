@@ -1,5 +1,5 @@
 import localforage from "localforage";
-import { Patient, Record, Document, Share } from "./types";
+import { Patient, Record, Document, Share, Wallet } from "./types";
 import { generateDemoData } from "./demo-data";
 
 // Initialize localforage
@@ -10,81 +10,122 @@ localforage.config({
   description: "Health Wallet patient data storage",
 });
 
+const WALLET_KEY = "wallet";
+
 export const storage = {
-  // Patient operations
+  // Single wallet persistence (atomic)
+  async setWallet(wallet: Wallet): Promise<void> {
+    await localforage.setItem(WALLET_KEY, wallet);
+  },
+
+  async getWallet(): Promise<Wallet | null> {
+    return (await localforage.getItem(WALLET_KEY)) as Wallet | null;
+  },
+
+  // Initialize wallet on first load
+  async initializeWallet(): Promise<Wallet> {
+    // Check if wallet already exists
+    const existing = await this.getWallet();
+    if (existing) {
+      return existing;
+    }
+
+    // No existing wallet, create with demo data
+    const { patient, records, documents } = generateDemoData();
+    const wallet: Wallet = {
+      patient,
+      records,
+      documents,
+      shares: {},
+    };
+
+    await this.setWallet(wallet);
+    return wallet;
+  },
+
+  // Legacy API for backward compatibility (maps to wallet)
   async setPatient(patient: Patient): Promise<void> {
-    await localforage.setItem("patient", patient);
+    const wallet = await this.getWallet();
+    if (wallet) {
+      wallet.patient = patient;
+      await this.setWallet(wallet);
+    }
   },
 
   async getPatient(): Promise<Patient | null> {
-    return (await localforage.getItem("patient")) as Patient | null;
+    const wallet = await this.getWallet();
+    return wallet?.patient || null;
   },
 
-  // Records operations
   async setRecords(records: Record[]): Promise<void> {
-    await localforage.setItem("records", records);
+    const wallet = await this.getWallet();
+    if (wallet) {
+      wallet.records = records;
+      await this.setWallet(wallet);
+    }
   },
 
   async getRecords(): Promise<Record[]> {
-    const records = (await localforage.getItem("records")) as Record[] | null;
-    return records || [];
+    const wallet = await this.getWallet();
+    return wallet?.records || [];
   },
 
-  // Documents operations
   async setDocuments(documents: Document[]): Promise<void> {
-    await localforage.setItem("documents", documents);
+    const wallet = await this.getWallet();
+    if (wallet) {
+      wallet.documents = documents;
+      await this.setWallet(wallet);
+    }
   },
 
   async getDocuments(): Promise<Document[]> {
-    const documents = (await localforage.getItem("documents")) as Document[] | null;
-    return documents || [];
+    const wallet = await this.getWallet();
+    return wallet?.documents || [];
   },
 
-  // Share operations
   async setShare(share: Share): Promise<void> {
-    await localforage.setItem(`share:${share.id}`, share);
+    const wallet = await this.getWallet();
+    if (wallet) {
+      wallet.shares[share.id] = share;
+      await this.setWallet(wallet);
+    }
   },
 
   async getShare(shareId: string): Promise<Share | null> {
-    return (await localforage.getItem(`share:${shareId}`)) as Share | null;
+    const wallet = await this.getWallet();
+    return wallet?.shares[shareId] || null;
   },
 
   async getAllShares(): Promise<Share[]> {
-    const shares: Share[] = [];
-    await localforage.iterate((value, key) => {
-      if (key.startsWith("share:")) {
-        shares.push(value as Share);
-      }
-    });
-    return shares;
+    const wallet = await this.getWallet();
+    return wallet ? Object.values(wallet.shares) : [];
   },
 
   async deleteShare(shareId: string): Promise<void> {
-    await localforage.removeItem(`share:${shareId}`);
-  },
-
-  // Initialize with demo data if empty
-  async initializeWithDemoData(): Promise<{ patient: Patient; records: Record[]; documents: Document[] }> {
-    const existingPatient = await this.getPatient();
-    if (existingPatient) {
-      return {
-        patient: existingPatient,
-        records: await this.getRecords(),
-        documents: await this.getDocuments(),
-      };
+    const wallet = await this.getWallet();
+    if (wallet) {
+      delete wallet.shares[shareId];
+      await this.setWallet(wallet);
     }
-
-    const { patient, records, documents } = generateDemoData();
-    await this.setPatient(patient);
-    await this.setRecords(records);
-    await this.setDocuments(documents);
-
-    return { patient, records, documents };
   },
 
-  // Utility: clear all data (dev only)
+  // Utility: clear all data (for development)
   async clear(): Promise<void> {
     await localforage.clear();
+  },
+
+  // Reset wallet to demo data
+  async resetToDemoData(): Promise<Wallet> {
+    await this.clear();
+    const { patient, records, documents } = generateDemoData();
+    const wallet: Wallet = {
+      patient,
+      records,
+      documents,
+      shares: {},
+    };
+    await this.setWallet(wallet);
+    return wallet;
   },
 };
 

@@ -2,9 +2,11 @@
 
 import { useApp } from "@/lib/context";
 import Link from "next/link";
+import { useState } from "react";
 
 export default function Home() {
-  const { patient, records, documents, loading } = useApp();
+  const { patient, records, documents, loading, resetToDemo } = useApp();
+  const [resetting, setResetting] = useState(false);
 
   if (loading) {
     return (
@@ -32,13 +34,34 @@ export default function Home() {
   const medications = records.filter((r) => r.type === "medication");
   const conditions = records.filter((r) => r.type === "condition");
 
+  const handleReset = async () => {
+    if (confirm("Reset wallet to demo data? This will clear all your data.")) {
+      setResetting(true);
+      try {
+        await resetToDemo();
+      } finally {
+        setResetting(false);
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Health Wallet</h1>
-          <p className="text-gray-600">Your portable health record</p>
+        <div className="mb-8 flex justify-between items-start">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">Health Wallet</h1>
+            <p className="text-gray-600">Your portable health record</p>
+          </div>
+          <button
+            onClick={handleReset}
+            disabled={resetting}
+            className="text-sm btn-secondary"
+            title="Reset wallet to demo data (for testing)"
+          >
+            {resetting ? "Resetting..." : "🔄 Reset"}
+          </button>
         </div>
 
         {/* Patient Info */}
