@@ -1,15 +1,31 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { Patient, Record, Document, Share, Wallet } from "./types";
+import {
+  Patient,
+  Record,
+  Document,
+  Share,
+  Wallet,
+  MedicalDocument,
+  DocumentExtraction,
+  StructuredMedicalRecord,
+  MedicalHistoryEntry,
+} from "./types";
 import { storage, generateShareId } from "./storage";
 
 type AppContextType = {
-  // State
+  // State - Core records
   patient: Patient | null;
   records: Record[];
   documents: Document[];
   loading: boolean;
+
+  // State - Medical document ingestion
+  medicalDocuments: MedicalDocument[];
+  documentExtractions: DocumentExtraction[];
+  structuredMedicalRecords: StructuredMedicalRecord[];
+  medicalHistoryEntries: MedicalHistoryEntry[];
 
   // Patient actions
   updatePatient: (patient: Patient) => Promise<void>;
@@ -23,6 +39,16 @@ type AppContextType = {
   addDocument: (document: Omit<Document, "id" | "createdAt" | "updatedAt">) => Promise<void>;
   updateDocument: (document: Document) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
+
+  // Medical document actions
+  addMedicalDocument: (doc: MedicalDocument) => Promise<void>;
+  updateMedicalDocument: (doc: MedicalDocument) => Promise<void>;
+  deleteMedicalDocument: (id: string) => Promise<void>;
+  addDocumentExtraction: (extraction: DocumentExtraction) => Promise<void>;
+  addStructuredMedicalRecord: (record: StructuredMedicalRecord) => Promise<void>;
+  updateStructuredMedicalRecord: (record: StructuredMedicalRecord) => Promise<void>;
+  addMedicalHistoryEntry: (entry: MedicalHistoryEntry) => Promise<void>;
+  updateMedicalHistoryEntry: (entry: MedicalHistoryEntry) => Promise<void>;
 
   // Share actions
   createShare: (scope: "emergency" | "continuity", selectedRecordIds: string[]) => Promise<Share>;
@@ -40,6 +66,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [records, setRecords] = useState<Record[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [medicalDocuments, setMedicalDocuments] = useState<MedicalDocument[]>([]);
+  const [documentExtractions, setDocumentExtractions] = useState<DocumentExtraction[]>([]);
+  const [structuredMedicalRecords, setStructuredMedicalRecords] = useState<StructuredMedicalRecord[]>([]);
+  const [medicalHistoryEntries, setMedicalHistoryEntries] = useState<MedicalHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Initialize app - load wallet once
@@ -50,6 +80,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setPatient(wallet.patient);
         setRecords(wallet.records);
         setDocuments(wallet.documents);
+        setMedicalDocuments(wallet.medicalDocuments || []);
+        setDocumentExtractions(wallet.documentExtractions || []);
+        setStructuredMedicalRecords(wallet.structuredMedicalRecords || []);
+        setMedicalHistoryEntries(wallet.medicalHistoryEntries || []);
       } catch (error) {
         console.error("Failed to initialize wallet:", error);
       } finally {
@@ -68,11 +102,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     patient?: Patient;
     records?: Record[];
     documents?: Document[];
+    medicalDocuments?: MedicalDocument[];
+    documentExtractions?: DocumentExtraction[];
+    structuredMedicalRecords?: StructuredMedicalRecord[];
+    medicalHistoryEntries?: MedicalHistoryEntry[];
   }) => {
     const wallet: Wallet = {
       patient: updates.patient ?? patient!,
       records: updates.records ?? records,
       documents: updates.documents ?? documents,
+      medicalDocuments: updates.medicalDocuments ?? medicalDocuments,
+      documentExtractions: updates.documentExtractions ?? documentExtractions,
+      structuredMedicalRecords: updates.structuredMedicalRecords ?? structuredMedicalRecords,
+      medicalHistoryEntries: updates.medicalHistoryEntries ?? medicalHistoryEntries,
       shares: (await storage.getWallet())?.shares || {},
     };
     await storage.setWallet(wallet);
@@ -148,6 +190,55 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await persistWallet({ documents: updatedDocuments });
   };
 
+  // Medical document actions
+  const addMedicalDocument = async (doc: MedicalDocument) => {
+    const updatedDocs = [...medicalDocuments, doc];
+    setMedicalDocuments(updatedDocs);
+    await persistWallet({ medicalDocuments: updatedDocs });
+  };
+
+  const updateMedicalDocument = async (doc: MedicalDocument) => {
+    const updatedDocs = medicalDocuments.map((d) => (d.id === doc.id ? doc : d));
+    setMedicalDocuments(updatedDocs);
+    await persistWallet({ medicalDocuments: updatedDocs });
+  };
+
+  const deleteMedicalDocument = async (id: string) => {
+    const updatedDocs = medicalDocuments.filter((d) => d.id !== id);
+    setMedicalDocuments(updatedDocs);
+    await persistWallet({ medicalDocuments: updatedDocs });
+  };
+
+  const addDocumentExtraction = async (extraction: DocumentExtraction) => {
+    const updatedExtractions = [...documentExtractions, extraction];
+    setDocumentExtractions(updatedExtractions);
+    await persistWallet({ documentExtractions: updatedExtractions });
+  };
+
+  const addStructuredMedicalRecord = async (record: StructuredMedicalRecord) => {
+    const updatedRecords = [...structuredMedicalRecords, record];
+    setStructuredMedicalRecords(updatedRecords);
+    await persistWallet({ structuredMedicalRecords: updatedRecords });
+  };
+
+  const updateStructuredMedicalRecord = async (record: StructuredMedicalRecord) => {
+    const updatedRecords = structuredMedicalRecords.map((r) => (r.id === record.id ? record : r));
+    setStructuredMedicalRecords(updatedRecords);
+    await persistWallet({ structuredMedicalRecords: updatedRecords });
+  };
+
+  const addMedicalHistoryEntry = async (entry: MedicalHistoryEntry) => {
+    const updatedEntries = [...medicalHistoryEntries, entry];
+    setMedicalHistoryEntries(updatedEntries);
+    await persistWallet({ medicalHistoryEntries: updatedEntries });
+  };
+
+  const updateMedicalHistoryEntry = async (entry: MedicalHistoryEntry) => {
+    const updatedEntries = medicalHistoryEntries.map((e) => (e.id === entry.id ? entry : e));
+    setMedicalHistoryEntries(updatedEntries);
+    await persistWallet({ medicalHistoryEntries: updatedEntries });
+  };
+
   // Share actions
   const createShare = async (scope: "emergency" | "continuity", selectedRecordIds: string[]) => {
     if (!patient) throw new Error("No patient found");
@@ -192,6 +283,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     patient,
     records,
     documents,
+    medicalDocuments,
+    documentExtractions,
+    structuredMedicalRecords,
+    medicalHistoryEntries,
     loading,
     updatePatient,
     addRecord,
@@ -200,6 +295,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addDocument,
     updateDocument,
     deleteDocument,
+    addMedicalDocument,
+    updateMedicalDocument,
+    deleteMedicalDocument,
+    addDocumentExtraction,
+    addStructuredMedicalRecord,
+    updateStructuredMedicalRecord,
+    addMedicalHistoryEntry,
+    updateMedicalHistoryEntry,
     createShare,
     getShare,
     getAllShares,

@@ -1,0 +1,6 @@
+- Saving changes should send you back to the previous page
+- Number of medications/conditions etc may not be helpful.
+- A timeline with the medical history
+- More emergency contacts
+- Documents text looks cut out
+- Persistent storage

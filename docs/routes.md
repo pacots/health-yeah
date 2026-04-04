@@ -7,11 +7,12 @@
 - **Purpose**: Overview of health wallet, quick access to main features
 - **Content**:
   - Patient name and DOB
-  - Quick summary: # allergies, # medications, # conditions
+  - Quick summary: # allergies, # medications, # conditions, # medical visits
   - Emergency contact info
-  - Large buttons: View Profile, Manage Records, View Emergency Summary, Generate Share
-  - List of recent updates (or snapshot of latest records)
-- **Actions**: Navigate to other sections
+  - **Medical History Preview**: Timeline showing 3 most important visits (sorted by severity then date), with "View All" button to expand to full-screen modal
+  - Grid buttons: View Profile, Manage Records (Allergies, Medications, Conditions, Medical History, Documents, Emergency Summary)
+  - Share Health Record button
+- **Actions**: Navigate to other sections, expand medical history timeline
 
 ### Profile
 - **Route**: `/profile`
@@ -49,6 +50,19 @@
   - Add button → Modal/form to create new
   - Each condition card has: Edit, Delete buttons
 - **Actions**: Create, read, update, delete conditions
+
+#### Medical History
+- **Route**: `/records/medical`
+- **Purpose**: Manage medical visit records with visit details, specialty tagging, and severity levels
+- **Content**:
+  - Timeline visualization of all medical visits sorted by date (newest first)
+  - Add button → Modal/form to create new
+  - Color-coded timeline dots based on severity (Red=Critical, Orange=Major, Blue=Moderate, Green=Routine)
+  - Each timeline entry shows: date, severity badge, specialty badge, reason, diagnosis, treatment, doctor notes
+  - Each entry has: Edit, Delete buttons
+  - Severity legend explaining severity levels
+- **Actions**: Create, read, update, delete medical visit records
+- **Fields**: Visit date, reason for visit, diagnosis, treatment, doctor notes, specialty, doctor name, **severity**
 
 ### Documents
 - **Route**: `/documents`

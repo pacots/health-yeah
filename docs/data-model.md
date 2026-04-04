@@ -63,7 +63,24 @@ type ConditionRecord = {
   updatedAt: number;
 };
 
-type Record = AllergyRecord | MedicationRecord | ConditionRecord;
+type MedicalVisitRecord = {
+  id: string;
+  type: "medical-visit";
+  visitDate: string; // ISO date (YYYY-MM-DD)
+  reasonForVisit: string; // e.g., "Quarterly diabetes check-up"
+  diagnosis?: string; // e.g., "Type 2 Diabetes - Well controlled"
+  treatment?: string; // e.g., "Continue current medication regimen"
+  doctorNotes?: string; // Detailed notes from the visit
+  specialty?: string; // e.g., "Dermatology", "Cardiology", "General Practice"
+  doctorName?: string; // e.g., "Dr. James Mitchell"
+  severity: "critical" | "major" | "moderate" | "routine"; // Critical = hospitalizations/major procedures, Major = significant diagnoses, Moderate = routine with findings, Routine = checkups/preventative
+  source: "self-reported" | "document-backed" | "derived";
+  sourceDocId?: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+type Record = AllergyRecord | MedicationRecord | ConditionRecord | MedicalVisitRecord;
 
 // ============ DOCUMENTS ============
 type Document = {
