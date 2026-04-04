@@ -19,8 +19,14 @@ type AppContextType = {
   updateRecord: (record: Record) => Promise<void>;
   deleteRecord: (id: string) => Promise<void>;
 
-  // Document actions
-  addDocument: (document: Omit<Document, "id" | "createdAt" | "updatedAt">) => Promise<void>;
+  // Document actions - unified interface
+  addDocument: (params: {
+    title: string;
+    textContent?: string;
+    file?: File;
+    description?: string;
+    category?: string;
+  }) => Promise<Document>;
   updateDocument: (document: Document) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
 
@@ -46,10 +52,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initialize = async () => {
       try {
+        // Load existing wallet data
         const wallet = await storage.initializeWallet();
         setPatient(wallet.patient);
         setRecords(wallet.records);
-        setDocuments(wallet.documents);
+
+        // Load documents from API
+        try {
+          const response = await fetch("/api/documents");
+          if (response.ok) {
+            const docs = await response.json();
+            setDocuments(docs);
+          } else {
+            // Fallback to wallet documents if API fails
+            setDocuments(wallet.documents);
+          }
+        } catch (error) {
+          console.warn("Failed to load documents from API, using wallet data:", error);
+          setDocuments(wallet.documents);
+        }
       } catch (error) {
         console.error("Failed to initialize wallet:", error);
       } finally {
@@ -118,34 +139,92 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Document actions
-  const addDocument = async (documentData: Omit<Document, "id" | "createdAt" | "updatedAt">) => {
-    const newDocument: Document = {
-      ...documentData,
-      id: Math.random().toString(36).substring(2, 11),
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    const updatedDocuments = [...documents, newDocument];
-    setDocuments(updatedDocuments);
-    await persistWallet({ documents: updatedDocuments });
+  const addDocument = async (params: {
+    title: string;
+    textContent?: string;
+    file?: File;
+    description?: string;
+    category?: string;
+  }): Promise<Document> => {
+    try {
+      if (params.file) {
+        // File document
+        const formData = new FormData();
+        formData.append("file", params.file);
+        formData.append("title", params.title);
+        if (params.description) formData.append("description", params.description);
+        if (params.category) formData.append("category", params.category);
+
+        const response = await fetch("/api/documents", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to create document");
+        }
+
+        const newDocument = await response.json();
+        const updatedDocuments = [...documents, newDocument];
+        setDocuments(updatedDocuments);
+        await persistWallet({ documents: updatedDocuments });
+        return newDocument;
+      } else {
+        // Text document
+        const response = await fetch("/api/documents", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: params.title,
+            textContent: params.textContent,
+            description: params.description,
+            category: params.category,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to create document");
+        }
+
+        const newDocument = await response.json();
+        const updatedDocuments = [...documents, newDocument];
+        setDocuments(updatedDocuments);
+        await persistWallet({ documents: updatedDocuments });
+        return newDocument;
+      }
+    } catch (error) {
+      console.error("Failed to create document:", error);
+      throw error;
+    }
   };
 
   const updateDocument = async (updatedDocument: Document) => {
-    const documentWithTimestamp = {
-      ...updatedDocument,
-      updatedAt: Date.now(),
-    };
     const updatedDocuments = documents.map((d) =>
-      d.id === documentWithTimestamp.id ? documentWithTimestamp : d
+      d.id === updatedDocument.id ? updatedDocument : d
     );
     setDocuments(updatedDocuments);
     await persistWallet({ documents: updatedDocuments });
   };
 
   const deleteDocument = async (id: string) => {
-    const updatedDocuments = documents.filter((d) => d.id !== id);
-    setDocuments(updatedDocuments);
-    await persistWallet({ documents: updatedDocuments });
+    try {
+      const response = await fetch(`/api/documents/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete document");
+      }
+
+      const updatedDocuments = documents.filter((d) => d.id !== id);
+      setDocuments(updatedDocuments);
+      await persistWallet({ documents: updatedDocuments });
+    } catch (error) {
+      console.error("Failed to delete document:", error);
+      throw error;
+    }
   };
 
   // Share actions

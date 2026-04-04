@@ -98,20 +98,24 @@ export function generateDemoData(): {
     {
       id: generateId(),
       title: "2023 Allergy Test Report",
-      type: "text",
-      content:
+      kind: "text",
+      textContent:
         "ALLERGY TEST RESULTS - 2023\n\nPatient: Sarah Chen\nDate: September 15, 2023\n\nConfirmed Allergies:\n- Penicillin: SEVERE (Anaphylaxis risk)\n- Sulfonamides: MODERATE (Rash)\n\nRecommendations:\n- Avoid all penicillin-based antibiotics\n- Alternative antibiotics available (fluoroquinolones, macrolides)\n- Carry epinephrine auto-injector at all times",
-      createdAt: now,
-      updatedAt: now,
+      category: "lab-result",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      llmSummary: null,
     },
     {
       id: generateId(),
       title: "Recent Lab Results - March 2026",
-      type: "text",
-      content:
+      kind: "text",
+      textContent:
         "LAB RESULTS - MARCH 2026\n\nPatient: Sarah Chen\nDate Collected: March 20, 2026\n\nHematology:\n- WBC: 7.2 K/uL (normal)\n- Hemoglobin: 13.5 g/dL (normal)\n- Platelets: 245 K/uL (normal)\n\nMetabolic Panel:\n- Glucose (fasting): 118 mg/dL (slightly elevated)\n- HbA1c: 6.8% (well-controlled diabetes)\n- Creatinine: 0.95 mg/dL (normal)\n- BUN: 18 mg/dL (normal)\n\nLipid Panel:\n- Total Cholesterol: 195 mg/dL\n- LDL: 115 mg/dL (slightly elevated)\n- HDL: 52 mg/dL (normal)\n- Triglycerides: 110 mg/dL (normal)",
-      createdAt: now,
-      updatedAt: now,
+      category: "lab-result",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      llmSummary: null,
     },
   ];
 

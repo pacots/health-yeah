@@ -272,7 +272,7 @@ export default function ProviderViewPage({ params }: { params: Promise<{ shareId
                 <div key={d.id} className="pb-3 border-b border-gray-100 last:border-b-0">
                   <p className="font-semibold text-gray-900 text-sm mb-1">{d.title}</p>
                   <p className="text-xs text-gray-600 line-clamp-2 whitespace-pre-wrap">
-                    {d.content.substring(0, 120)}...
+                    {d.kind === "text" ? (d.textContent || d.content || "").substring(0, 120) : `[${d.extension?.toUpperCase()} File]`}...
                   </p>
                 </div>
               ))}
