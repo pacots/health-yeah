@@ -1,6 +1,7 @@
 "use client";
 
 import { useApp } from "@/lib/context";
+import { SourceBadge } from "@/lib/metadata-badges";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -48,10 +49,26 @@ CONDITIONS:
 ${conditions.length === 0 ? "None" : conditions.map((c) => `• ${(c as any).name}`).join("\n")}
 `;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(textContent);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(textContent);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } else {
+        // Fallback for older browsers
+        const textarea = document.createElement("textarea");
+        textarea.value = textContent;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    } catch (error) {
+      console.error("Copy failed:", error);
+    }
   };
 
   const handleCreateEmergencyShare = async () => {
@@ -67,9 +84,24 @@ ${conditions.length === 0 ? "None" : conditions.map((c) => `• ${(c as any).nam
       const share = await createShare("emergency", emergencyRecordIds);
       setShareCreated(share.id);
 
-      // Copy link to clipboard automatically
+      // Copy link to clipboard automatically (with fallback)
       const shareUrl = `${window.location.origin}/share/${share.id}`;
-      navigator.clipboard.writeText(shareUrl);
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(shareUrl);
+        } else {
+          // Fallback for older browsers
+          const textarea = document.createElement("textarea");
+          textarea.value = shareUrl;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand("copy");
+          document.body.removeChild(textarea);
+        }
+      } catch (clipboardError) {
+        console.warn("Could not copy share link to clipboard:", clipboardError);
+        // Still continue - share was created successfully
+      }
     } finally {
       setSharing(false);
     }
@@ -184,21 +216,24 @@ ${conditions.length === 0 ? "None" : conditions.map((c) => `• ${(c as any).nam
                   }`}
                 >
                   <p className="font-bold text-gray-900 break-words">{(a as any).allergen}</p>
-                  <div className="flex items-center gap-2 text-xs text-gray-600 mt-1">
-                    {(a as any).severity && (
-                      <span
-                        className={`font-bold px-2 py-0.5 rounded ${
-                          (a as any).severity === "severe"
-                            ? "bg-red-200 text-red-800"
-                            : (a as any).severity === "moderate"
-                            ? "bg-yellow-200 text-yellow-800"
-                            : "bg-blue-200 text-blue-800"
-                        }`}
-                      >
-                        {(a as any).severity}
-                      </span>
-                    )}
-                    {(a as any).reaction && <span>{(a as any).reaction}</span>}
+                  <div className="flex items-start justify-between gap-2 text-xs text-gray-600 mt-1">
+                    <div className="flex items-center gap-2">
+                      {(a as any).severity && (
+                        <span
+                          className={`font-bold px-2 py-0.5 rounded ${
+                            (a as any).severity === "severe"
+                              ? "bg-red-200 text-red-800"
+                              : (a as any).severity === "moderate"
+                              ? "bg-yellow-200 text-yellow-800"
+                              : "bg-blue-200 text-blue-800"
+                          }`}
+                        >
+                          {(a as any).severity}
+                        </span>
+                      )}
+                      {(a as any).reaction && <span>{(a as any).reaction}</span>}
+                    </div>
+                    <SourceBadge source={(a as any).source} />
                   </div>
                 </div>
               ))}
@@ -213,10 +248,15 @@ ${conditions.length === 0 ? "None" : conditions.map((c) => `• ${(c as any).nam
             <div className="space-y-2">
               {medications.map((m) => (
                 <div key={m.id} className="p-2 rounded bg-blue-50 border border-blue-200 text-sm">
-                  <p className="font-bold text-gray-900 break-words">{(m as any).name}</p>
-                  <p className="text-xs text-gray-600 mt-0.5">
-                    {(m as any).dosage} • {(m as any).frequency}
-                  </p>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <p className="font-bold text-gray-900 break-words">{(m as any).name}</p>
+                      <p className="text-xs text-gray-600 mt-0.5">
+                        {(m as any).dosage} • {(m as any).frequency}
+                      </p>
+                    </div>
+                    <SourceBadge source={(m as any).source} />
+                  </div>
                 </div>
               ))}
             </div>
@@ -230,8 +270,13 @@ ${conditions.length === 0 ? "None" : conditions.map((c) => `• ${(c as any).nam
             <div className="space-y-2">
               {conditions.map((c) => (
                 <div key={c.id} className="p-2 rounded bg-green-50 border border-green-200 text-sm">
-                  <p className="font-bold text-gray-900 break-words">{(c as any).name}</p>
-                  <p className="text-xs text-gray-600 mt-0.5">Status: {(c as any).status}</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <p className="font-bold text-gray-900 break-words">{(c as any).name}</p>
+                      <p className="text-xs text-gray-600 mt-0.5">Status: {(c as any).status}</p>
+                    </div>
+                    <SourceBadge source={(c as any).source} />
+                  </div>
                 </div>
               ))}
             </div>

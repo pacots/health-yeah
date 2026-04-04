@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import React from "react";
 import { useApp } from "@/lib/context";
+import { SourceBadge } from "@/lib/metadata-badges";
 import { Share } from "@/lib/types";
 import Link from "next/link";
 
@@ -191,6 +192,9 @@ export default function ProviderViewPage({ params }: { params: Promise<{ shareId
                   {(a as any).reaction && (
                     <p className="text-xs text-gray-600 mt-0.5">→ {(a as any).reaction}</p>
                   )}
+                  <div className="mt-1">
+                    <SourceBadge source={(a as any).source} />
+                  </div>
                 </div>
               ))}
             </div>
@@ -204,8 +208,11 @@ export default function ProviderViewPage({ params }: { params: Promise<{ shareId
             <div className="space-y-2">
               {medications.map((m) => (
                 <div key={m.id} className="text-sm text-gray-900 pb-2 border-b border-gray-100 last:border-b-0">
-                  <p className="font-semibold break-words">{(m as any).name}</p>
-                  <p className="text-xs text-gray-600 mt-0.5">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <p className="font-semibold break-words flex-1">{(m as any).name}</p>
+                    <SourceBadge source={(m as any).source} />
+                  </div>
+                  <p className="text-xs text-gray-600">
                     {(m as any).dosage} • {(m as any).frequency}
                   </p>
                   {(m as any).indication && (
@@ -224,11 +231,14 @@ export default function ProviderViewPage({ params }: { params: Promise<{ shareId
             <div className="space-y-2">
               {conditions.map((c) => (
                 <div key={c.id} className="text-sm text-gray-900 pb-2 border-b border-gray-100 last:border-b-0">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2 mb-1">
                     <p className="font-semibold break-words flex-1">{(c as any).name}</p>
-                    <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded flex-shrink-0">
-                      {(c as any).status}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded flex-shrink-0">
+                        {(c as any).status}
+                      </span>
+                      <SourceBadge source={(c as any).source} />
+                    </div>
                   </div>
                   {(c as any).notes && (
                     <p className="text-xs text-gray-600 mt-0.5">{(c as any).notes}</p>

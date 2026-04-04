@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useApp } from "@/lib/context";
 import { ConditionRecord } from "@/lib/types";
+import { SourceBadge, LastUpdated } from "@/lib/metadata-badges";
 import Link from "next/link";
 
 export default function ConditionsPage() {
@@ -74,9 +75,10 @@ export default function ConditionsPage() {
                       <strong>Notes:</strong> {condition.notes}
                     </p>
                   )}
-                  <p className="text-xs text-gray-500 mt-2">
-                    Source: {condition.source}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+                    <SourceBadge source={condition.source} />
+                    <LastUpdated timestamp={condition.updatedAt} />
+                  </div>
                 </div>
                 <button
                   onClick={() => deleteRecord(condition.id)}

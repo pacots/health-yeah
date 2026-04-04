@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useApp } from "@/lib/context";
 import { AllergyRecord } from "@/lib/types";
+import { SourceBadge, LastUpdated } from "@/lib/metadata-badges";
 import Link from "next/link";
 
 export default function AllergiesPage() {
@@ -79,9 +80,10 @@ export default function AllergiesPage() {
                       <strong>Notes:</strong> {allergy.notes}
                     </p>
                   )}
-                  <p className="text-xs text-gray-500 mt-2">
-                    Source: {allergy.source}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+                    <SourceBadge source={allergy.source} />
+                    <LastUpdated timestamp={allergy.updatedAt} />
+                  </div>
                 </div>
                 <button
                   onClick={() => deleteRecord(allergy.id)}

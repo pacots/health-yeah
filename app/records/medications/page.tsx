@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useApp } from "@/lib/context";
 import { MedicationRecord } from "@/lib/types";
+import { SourceBadge, LastUpdated } from "@/lib/metadata-badges";
 import Link from "next/link";
 
 export default function MedicationsPage() {
@@ -65,9 +66,10 @@ export default function MedicationsPage() {
                       <strong>Notes:</strong> {med.notes}
                     </p>
                   )}
-                  <p className="text-xs text-gray-500 mt-2">
-                    Source: {med.source}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+                    <SourceBadge source={med.source} />
+                    <LastUpdated timestamp={med.updatedAt} />
+                  </div>
                 </div>
                 <button
                   onClick={() => deleteRecord(med.id)}
