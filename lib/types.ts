@@ -56,14 +56,48 @@ export type ConditionRecord = {
 
 export type Record = AllergyRecord | MedicationRecord | ConditionRecord;
 
+/**
+ * Document record - supports both text and file documents
+ *
+ * Designed to support future linking with medical history entries.
+ * linkedMedicalHistoryIds allows associating documents with specific medical records.
+ *
+ * - kind: 'text' means only textContent is populated
+ * - kind: 'file' means fileName, mimeType, extension, fileSizeBytes, localPath are populated
+ * - llmSummary: Reserved for future LLM-generated summaries (not shown in UI yet)
+ */
 export type Document = {
+  // Identity
   id: string;
-  title: string;
-  type: "text" | "file";
-  content: string;
+  title: string; // Required
+
+  // Type & Content
+  kind: "text" | "file"; // Mutually exclusive: either text or file
+  textContent?: string; // Only for kind === 'text'
+
+  // File metadata (only for kind === 'file')
+  fileName?: string;
   mimeType?: string;
-  createdAt: number;
-  updatedAt: number;
+  extension?: string;
+  fileSizeBytes?: number;
+  localPath?: string;
+
+  // Timestamps (ISO 8601 format)
+  createdAt: string;
+  updatedAt: string;
+
+  // Reserved for future features
+  /** LLM-generated summary (hidden in current UI, for future use) */
+  llmSummary?: string | null;
+
+  /** IDs of associated medical history entries (supports future linking) */
+  linkedMedicalHistoryIds?: string[];
+
+  // Legacy fields (deprecated, kept for compatibility)
+  category?: "lab-result" | "prescription" | "imaging" | "insurance" | "referral" | "discharge-summary" | "doctor-note" | "vaccination" | "other";
+  description?: string;
+  patientId?: string;
+  content?: string;
 };
 
 export type Share = {

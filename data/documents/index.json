@@ -1,0 +1,39 @@
+[
+  {
+    "id": "87lv1pipa",
+    "title": "informe medico",
+    "description": "visita del 4/4",
+    "category": "doctor-note",
+    "kind": "file",
+    "fileName": "Mr.pdf",
+    "mimeType": "application/pdf",
+    "extension": ".pdf",
+    "fileSizeBytes": 18153,
+    "localPath": "files/87lv1pipa_Mr.pdf",
+    "checksumSha256": "a3945c57cae4f073c36ad79218bb9c0ba61b9f57941b3292bb227bc22b3dfd3c",
+    "createdAt": 1775337802730,
+    "updatedAt": 1775337802730
+  },
+  {
+    "id": "3cadbb2lc",
+    "title": "Template",
+    "kind": "file",
+    "fileName": "Heidi-Emergency-Room-Doctors-Note-Template.pdf",
+    "mimeType": "application/pdf",
+    "extension": ".pdf",
+    "fileSizeBytes": 44796,
+    "localPath": "files/3cadbb2lc_Heidi-Emergency-Room-Doctors-Note-Template.pdf",
+    "createdAt": "2026-04-04T21:51:45.015Z",
+    "updatedAt": "2026-04-04T21:51:45.015Z",
+    "llmSummary": null
+  },
+  {
+    "id": "afpobbwf9",
+    "title": "Texto",
+    "kind": "text",
+    "textContent": "A",
+    "createdAt": "2026-04-04T21:53:05.758Z",
+    "updatedAt": "2026-04-04T21:53:05.758Z",
+    "llmSummary": null
+  }
+]
