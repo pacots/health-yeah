@@ -1,39 +1,18 @@
 [
   {
-    "id": "87lv1pipa",
-    "title": "informe medico",
-    "description": "visita del 4/4",
-    "category": "doctor-note",
+    "id": "fni1oz81e",
+    "title": "Medical Visit 04/04/2026",
     "kind": "file",
-    "fileName": "Mr.pdf",
+    "fileName": "medical_visit_sample.pdf",
     "mimeType": "application/pdf",
     "extension": ".pdf",
-    "fileSizeBytes": 18153,
-    "localPath": "files/87lv1pipa_Mr.pdf",
-    "checksumSha256": "a3945c57cae4f073c36ad79218bb9c0ba61b9f57941b3292bb227bc22b3dfd3c",
-    "createdAt": 1775337802730,
-    "updatedAt": 1775337802730
-  },
-  {
-    "id": "3cadbb2lc",
-    "title": "Template",
-    "kind": "file",
-    "fileName": "Heidi-Emergency-Room-Doctors-Note-Template.pdf",
-    "mimeType": "application/pdf",
-    "extension": ".pdf",
-    "fileSizeBytes": 44796,
-    "localPath": "files/3cadbb2lc_Heidi-Emergency-Room-Doctors-Note-Template.pdf",
-    "createdAt": "2026-04-04T21:51:45.015Z",
-    "updatedAt": "2026-04-04T21:51:45.015Z",
-    "llmSummary": null
-  },
-  {
-    "id": "afpobbwf9",
-    "title": "Texto",
-    "kind": "text",
-    "textContent": "A",
-    "createdAt": "2026-04-04T21:53:05.758Z",
-    "updatedAt": "2026-04-04T21:53:05.758Z",
-    "llmSummary": null
+    "fileSizeBytes": 2482,
+    "localPath": "files/fni1oz81e_medical_visit_sample.pdf",
+    "createdAt": "2026-04-04T22:55:55.366Z",
+    "updatedAt": "2026-04-04T22:56:00.070Z",
+    "llmSummary": null,
+    "aiSummaryStatus": "ready",
+    "aiStructuredSummary": "Document Type: Clinical note\n\nClinical Summary: John Doe presented with mild headache, fatigue, and sore throat lasting for the past 3 days, suggesting a likely viral upper respiratory infection.\n\nKey Findings:\n- Chief Complaint: Mild headache, fatigue, sore throat for 3 days\n- Vital Signs: \n  - Temperature: 98.6°F\n  - Blood Pressure: 120/80 mmHg\n  - Heart Rate: 72 bpm\n  - Respiratory Rate: 16 breaths/min\n\nMedications Mentioned: Over-the-counter pain relievers as needed\n\nConditions/Diagnoses: Likely viral upper respiratory infection\n\nAllergies Mentioned: None noted\n\nImportant Dates: Date of Visit: April 4, 2026\n\nProvider Notes: Treatment plan includes rest and hydration; follow-up recommended if symptoms worsen or persist beyond 7 days.\n\nLimitations: None noted; document appears complete.",
+    "aiSummaryGeneratedAt": "2026-04-04T22:56:00.070Z"
   }
 ]

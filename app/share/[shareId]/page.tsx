@@ -308,13 +308,26 @@ export default function ProviderViewPage({ params }: { params: Promise<{ shareId
         {share.scope === "continuity" && share.documentSnapshots && share.documentSnapshots.length > 0 && (
           <div className="bg-white border-l-4 border-l-gray-400 p-4 sm:p-6 mb-6 shadow-sm">
             <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Supporting Documents</h2>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {share.documentSnapshots.map((d) => (
-                <div key={d.id} className="pb-3 border-b border-gray-100 last:border-b-0">
-                  <p className="font-semibold text-gray-900 text-sm mb-1">{d.title}</p>
-                  <p className="text-xs text-gray-600 line-clamp-2 whitespace-pre-wrap">
-                    {d.kind === "text" ? (d.textContent || d.content || "").substring(0, 120) : `[${d.extension?.toUpperCase()} File]`}...
-                  </p>
+                <div key={d.id} className="pb-4 border-b border-gray-100 last:border-b-0">
+                  <p className="font-semibold text-gray-900 text-sm mb-2">{d.title}</p>
+
+                  {/* Show AI Summary if available */}
+                  {d.aiStructuredSummary ? (
+                    <div className="text-xs text-gray-700 bg-slate-50 p-3 rounded border border-slate-200 whitespace-pre-wrap line-clamp-4">
+                      {d.aiStructuredSummary}
+                    </div>
+                  ) : d.kind === "text" ? (
+                    <p className="text-xs text-gray-600 line-clamp-3 whitespace-pre-wrap">
+                      {(d.textContent || d.content || "").substring(0, 200)}...
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-600">
+                      [{d.extension?.toUpperCase() || "File"}] {d.fileName || "Document"}
+                      {d.fileSizeBytes && ` • ${(d.fileSizeBytes / 1024).toFixed(1)} KB`}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>

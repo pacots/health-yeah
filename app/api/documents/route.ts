@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllDocuments, createDocument } from "@/lib/document-storage";
+import { triggerAIProcessing } from "@/lib/document-ai";
 
 /**
  * GET /api/documents
@@ -32,6 +33,11 @@ export async function GET() {
  * - title is required
  * - Either textContent OR file must be provided (XOR)
  * - Not both
+ *
+ * AI Processing:
+ * - AI summary generation is triggered asynchronously after document creation
+ * - Returns document with aiSummaryStatus: "processing"
+ * - Summary will be available after processing completes (check document again)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -83,6 +89,12 @@ export async function POST(request: NextRequest) {
       fileBuffer,
       description,
       category,
+    });
+
+    // Trigger AI processing asynchronously (non-blocking)
+    // Uses fire-and-forget pattern with try-catch to prevent errors from reaching client
+    triggerAIProcessing(doc).catch((error) => {
+      console.error("Background AI processing failed for document", id, ":", error);
     });
 
     return NextResponse.json(doc, { status: 201 });

@@ -64,7 +64,8 @@ export type Record = AllergyRecord | MedicationRecord | ConditionRecord;
  *
  * - kind: 'text' means only textContent is populated
  * - kind: 'file' means fileName, mimeType, extension, fileSizeBytes, localPath are populated
- * - llmSummary: Reserved for future LLM-generated summaries (not shown in UI yet)
+ * - aiStructuredSummary: AI-generated summary (automatic, server-side)
+ * - aiSummaryStatus: 'processing' | 'ready' | 'error'
  */
 export type Document = {
   // Identity
@@ -85,6 +86,12 @@ export type Document = {
   // Timestamps (ISO 8601 format)
   createdAt: string;
   updatedAt: string;
+
+  // AI-generated summary fields
+  aiStructuredSummary?: string;
+  aiSummaryStatus?: "processing" | "ready" | "error";
+  aiSummaryGeneratedAt?: string;
+  aiSummaryError?: string;
 
   // Reserved for future features
   /** LLM-generated summary (hidden in current UI, for future use) */

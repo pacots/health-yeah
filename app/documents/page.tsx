@@ -344,7 +344,7 @@ function DocumentDetailModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
           {doc.kind === "text" ? (
             <p className="text-gray-700 whitespace-pre-wrap text-xs sm:text-sm leading-relaxed break-words">
               {doc.textContent}
@@ -396,6 +396,41 @@ function DocumentDetailModal({
               )}
             </div>
           )}
+
+          {/* AI Structured Summary Section */}
+          <div className="border-t border-gray-200 pt-6">
+            <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider mb-3">
+              AI Summary
+            </h3>
+
+            {doc.aiSummaryStatus === "processing" && (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-700 flex items-center gap-2">
+                <span className="animate-spin">⏳</span>
+                Processing document with AI...
+              </div>
+            )}
+
+            {doc.aiSummaryStatus === "ready" && doc.aiStructuredSummary && (
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded text-sm text-gray-700 whitespace-pre-wrap max-h-72 overflow-y-auto">
+                {doc.aiStructuredSummary}
+              </div>
+            )}
+
+            {doc.aiSummaryStatus === "error" && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                <p className="font-medium">Summary generation failed</p>
+                {doc.aiSummaryError && (
+                  <p className="text-xs mt-1">{doc.aiSummaryError}</p>
+                )}
+              </div>
+            )}
+
+            {!doc.aiSummaryStatus && (
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded text-sm text-gray-600">
+                No summary available yet
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer */}

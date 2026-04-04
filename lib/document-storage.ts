@@ -173,6 +173,7 @@ export function createDocument(params: {
       createdAt: now,
       updatedAt: now,
       llmSummary: null,
+      aiSummaryStatus: "processing",
     };
   } else {
     // File document
@@ -207,6 +208,7 @@ export function createDocument(params: {
       createdAt: now,
       updatedAt: now,
       llmSummary: null,
+      aiSummaryStatus: "processing",
     };
   }
 
@@ -216,6 +218,37 @@ export function createDocument(params: {
   updateDocumentsIndex(docs);
 
   return doc;
+}
+
+/**
+ * Update a document with AI summary results
+ */
+export function updateDocumentWithAISummary(
+  id: string,
+  summary: string | null,
+  status: "ready" | "error",
+  error?: string
+): Document | null {
+  const docs = getAllDocuments();
+  const doc = docs.find((d) => d.id === id);
+
+  if (!doc) {
+    return null;
+  }
+
+  const updatedDoc: Document = {
+    ...doc,
+    aiStructuredSummary: summary || undefined,
+    aiSummaryStatus: status,
+    aiSummaryGeneratedAt: new Date().toISOString(),
+    aiSummaryError: error,
+    updatedAt: new Date().toISOString(),
+  };
+
+  const updatedDocs = docs.map((d) => (d.id === id ? updatedDoc : d));
+  updateDocumentsIndex(updatedDocs);
+
+  return updatedDoc;
 }
 
 /**
