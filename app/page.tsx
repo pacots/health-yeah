@@ -4,10 +4,12 @@ import { useApp } from "@/lib/context";
 import Link from "next/link";
 import { useState } from "react";
 import { AlertTriangle, Pill, Heart, FileText, Share2, CheckCircle, Plus, Phone, ArrowRight } from "lucide-react";
+import { ConfirmDialog } from "@/lib/ConfirmDialog";
 
 export default function Home() {
   const { patient, records, documents, loading, resetToDemo } = useApp();
   const [resetting, setResetting] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   if (loading) {
     return (
@@ -36,13 +38,12 @@ export default function Home() {
   const conditions = records.filter((r) => r.type === "condition");
 
   const handleReset = async () => {
-    if (confirm("Reset wallet to demo data? This will clear all your data.")) {
-      setResetting(true);
-      try {
-        await resetToDemo();
-      } finally {
-        setResetting(false);
-      }
+    setResetting(true);
+    try {
+      await resetToDemo();
+    } finally {
+      setResetting(false);
+      setShowResetConfirm(false);
     }
   };
 
@@ -57,7 +58,7 @@ export default function Home() {
             <p className="page-subtitle">Your complete health information, always accessible</p>
           </div>
           <button
-            onClick={handleReset}
+            onClick={() => setShowResetConfirm(true)}
             disabled={resetting}
             className="btn-tertiary btn-sm whitespace-nowrap flex-shrink-0"
             title="Reset wallet to demo data"
@@ -180,6 +181,19 @@ export default function Home() {
             <span>Share Record</span>
           </Link>
         </div>
+
+        {/* Confirmation Dialogs */}
+        <ConfirmDialog
+          isOpen={showResetConfirm}
+          title="Reset Wallet"
+          message="Are you sure? This will reset all data to the demo dataset. This action cannot be undone."
+          confirmLabel="Reset"
+          cancelLabel="Cancel"
+          isDangerous={true}
+          isLoading={resetting}
+          onConfirm={handleReset}
+          onCancel={() => setShowResetConfirm(false)}
+        />
       </div>
     </div>
   );
