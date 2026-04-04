@@ -1,0 +1,201 @@
+"use client";
+
+import { useState } from "react";
+import { useApp } from "@/lib/context";
+import { ConditionRecord } from "@/lib/types";
+import Link from "next/link";
+
+export default function ConditionsPage() {
+  const { records, addRecord, deleteRecord } = useApp();
+  const [showForm, setShowForm] = useState(false);
+
+  const conditions = records.filter((r) => r.type === "condition") as ConditionRecord[];
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-12 px-4">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <Link href="/" className="text-blue-600 hover:text-blue-700 mb-2 inline-block">
+              ← Back to Dashboard
+            </Link>
+            <h1 className="text-4xl font-bold text-gray-900">🏥 Conditions</h1>
+          </div>
+          <button onClick={() => setShowForm(true)} className="btn-primary">
+            + Add Condition
+          </button>
+        </div>
+
+        {/* Form Modal */}
+        {showForm && (
+          <ConditionForm
+            onClose={() => setShowForm(false)}
+            onSave={async (data) => {
+              await addRecord(data);
+              setShowForm(false);
+            }}
+          />
+        )}
+
+        {/* List */}
+        {conditions.length === 0 ? (
+          <div className="card text-center py-8">
+            <p className="text-gray-600">No conditions recorded yet</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {conditions.map((condition) => (
+              <div key={condition.id} className="card flex justify-between items-start">
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-gray-900">{condition.name}</h3>
+                  <p className="text-sm font-semibold text-gray-600 mb-1">
+                    Status:{" "}
+                    <span
+                      className={`${
+                        condition.status === "active"
+                          ? "text-orange-600"
+                          : condition.status === "chronic"
+                          ? "text-red-600"
+                          : "text-green-600"
+                      }`}
+                    >
+                      {condition.status}
+                    </span>
+                  </p>
+                  {condition.onsetDate && (
+                    <p className="text-gray-600">
+                      <strong>Onset:</strong>{" "}
+                      {new Date(condition.onsetDate).toLocaleDateString()}
+                    </p>
+                  )}
+                  {condition.notes && (
+                    <p className="text-gray-600 text-sm mt-2">
+                      <strong>Notes:</strong> {condition.notes}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-2">
+                    Source: {condition.source}
+                  </p>
+                </div>
+                <button
+                  onClick={() => deleteRecord(condition.id)}
+                  className="btn-danger text-sm"
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ConditionForm({
+  onClose,
+  onSave,
+}: {
+  onClose: () => void;
+  onSave: (data: any) => Promise<void>;
+}) {
+  const [name, setName] = useState("");
+  const [status, setStatus] = useState<"active" | "resolved" | "chronic">(
+    "active"
+  );
+  const [onsetDate, setOnsetDate] = useState("");
+  const [notes, setNotes] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+
+    setLoading(true);
+    try {
+      await onSave({
+        type: "condition",
+        name,
+        status,
+        onsetDate: onsetDate || undefined,
+        source: "self-reported",
+        notes: notes || undefined,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Add Condition</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="label">Condition Name *</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., Type 2 Diabetes"
+              className="input"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="label">Status</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as any)}
+              className="input"
+            >
+              <option value="active">Active</option>
+              <option value="chronic">Chronic</option>
+              <option value="resolved">Resolved</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="label">Onset Date</label>
+            <input
+              type="date"
+              value={onsetDate}
+              onChange={(e) => setOnsetDate(e.target.value)}
+              className="input"
+            />
+          </div>
+
+          <div>
+            <label className="label">Notes</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Additional information..."
+              className="input"
+              rows={3}
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary flex-1"
+            >
+              {loading ? "Saving..." : "Save"}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn-secondary flex-1"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
