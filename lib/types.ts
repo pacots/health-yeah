@@ -68,14 +68,29 @@ export type ConditionRecord = {
   name: string;
   status: "active" | "resolved" | "chronic";
   onsetDate?: string;
-  source: "self-reported" | "document-backed" | "derived";
+  source: "self-reported" | "document-backed" | "derived" | "ai-suggested";
   sourceDocId?: string;
+  linkedDocumentIds?: string[]; // Documents linked to this condition
+  progressSummary?: string | null;
   notes?: string;
   createdAt: number;
   updatedAt: number;
 };
 
 export type Record = AllergyRecord | MedicationRecord | ConditionRecord;
+
+/**
+ * AI-generated suggestion for linking a document to a condition
+ */
+export type DocumentConditionSuggestion = {
+  type: "link-existing" | "create-new";
+  conditionName: string;
+  matchedConditionId?: string; // Only for type === 'link-existing'
+  confidence: number; // 0-1 score
+  reason?: string;
+  reviewed?: boolean;
+  accepted?: boolean;
+};
 
 /**
  * Document record - supports both text and file documents
@@ -124,6 +139,12 @@ export type Document = {
 
   /** IDs of associated medical history entries (supports future linking) */
   linkedMedicalHistoryIds?: string[];
+  
+  /** IDs of linked conditions (document-backed) */
+  linkedConditionIds?: string[];
+  
+  /** AI-generated suggestions for linking to conditions */
+  aiConditionSuggestions?: DocumentConditionSuggestion[];
 
   // Legacy fields (deprecated, kept for compatibility)
   category?: "lab-result" | "prescription" | "imaging" | "insurance" | "referral" | "discharge-summary" | "doctor-note" | "vaccination" | "other";

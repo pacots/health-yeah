@@ -5,11 +5,13 @@ import { useApp } from "@/lib/context";
 import { Document } from "@/lib/types";
 import Link from "next/link";
 import { ConfirmDialog } from "@/lib/ConfirmDialog";
+import { DocumentSuggestions } from "@/app/components/DocumentSuggestions";
 
 export default function DocumentsPage() {
   const { documents, addDocument, deleteDocument } = useApp();
   const [tab, setTab] = useState<"list" | "create">("list");
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
+  const [showingSuggestionsFor, setShowingSuggestionsFor] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -267,18 +269,30 @@ export default function DocumentsPage() {
 
         {/* DOCUMENT DETAIL MODAL */}
         {expandedDoc && (
-          <DocumentDetailModal
-            doc={expandedDoc}
-            onClose={() => setExpandedDocId(null)}
-            onDelete={async () => {
-              try {
-                await deleteDocument(expandedDoc.id);
-                setExpandedDocId(null);
-              } catch (err) {
-                alert(err instanceof Error ? err.message : "Failed to delete");
-              }
-            }}
-          />
+          <>
+            <DocumentDetailModal
+              doc={expandedDoc}
+              onClose={() => setExpandedDocId(null)}
+              onDelete={async () => {
+                try {
+                  await deleteDocument(expandedDoc.id);
+                  setExpandedDocId(null);
+                } catch (err) {
+                  alert(err instanceof Error ? err.message : "Failed to delete");
+                }
+              }}
+              onShowSuggestions={() => setShowingSuggestionsFor(expandedDoc.id)}
+            />
+
+            {/* Show suggestions modal if a document with pending suggestions is selected */}
+            {showingSuggestionsFor === expandedDoc.id && expandedDoc.aiConditionSuggestions && 
+              expandedDoc.aiConditionSuggestions.some(s => !s.reviewed) && (
+              <DocumentSuggestions
+                document={expandedDoc}
+                onClose={() => setShowingSuggestionsFor(null)}
+              />
+            )}
+          </>
         )}
       </div>
     </div>
@@ -292,10 +306,12 @@ function DocumentDetailModal({
   doc,
   onClose,
   onDelete,
+  onShowSuggestions,
 }: {
   doc: Document;
   onClose: () => void;
   onDelete: () => Promise<void>;
+  onShowSuggestions?: () => void;
 }) {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -442,8 +458,24 @@ function DocumentDetailModal({
             )}
 
             {doc.aiSummaryStatus === "ready" && doc.aiStructuredSummary && (
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded text-sm text-gray-700 whitespace-pre-wrap max-h-72 overflow-y-auto">
-                {doc.aiStructuredSummary}
+              <div className="space-y-3">
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded text-sm text-gray-700 whitespace-pre-wrap max-h-72 overflow-y-auto">
+                  {doc.aiStructuredSummary}
+                </div>
+
+                {/* Condition Suggestions Button */}
+                {doc.aiConditionSuggestions && doc.aiConditionSuggestions.length > 0 && (
+                  <div className="flex gap-2">
+                    {doc.aiConditionSuggestions.some(s => !s.reviewed) && (
+                      <button
+                        onClick={onShowSuggestions}
+                        className="flex-1 px-4 py-2 bg-blue-100 text-blue-700 font-medium rounded hover:bg-blue-200 transition text-sm"
+                      >
+                        💡 Review Condition Suggestions ({doc.aiConditionSuggestions.filter(s => !s.reviewed).length})
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

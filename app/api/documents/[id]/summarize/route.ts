@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Document } from "@/lib/types";
-import { generateDocumentSummary, generateImageSummary } from "@/lib/openai";
+import { Document, ConditionRecord, DocumentConditionSuggestion } from "@/lib/types";
+import { generateDocumentSummary, generateImageSummary, analyzeConditionSuggestions } from "@/lib/openai";
 // @ts-ignore - pdf-parse doesn't have TypeScript definitions
 import pdfParse from "pdf-parse";
 
@@ -31,7 +31,13 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const document = (await request.json()) as Document;
+    const requestBody = await request.json();
+    
+    // Handle two formats: 
+    // 1. Old format with just document
+    // 2. New format with { document, activeConditions }
+    const document: Document = requestBody.document || requestBody;
+    const activeConditions: ConditionRecord[] = requestBody.activeConditions || [];
 
     // Validate document
     if (!document || document.id !== id) {
@@ -98,13 +104,20 @@ export async function POST(
       error = "No content to summarize";
     }
 
-    // Return updated document with AI summary
+    // Analyze conditions based on the summary
+    let suggestions: DocumentConditionSuggestion[] = [];
+    if (summary && activeConditions.length > 0) {
+      suggestions = await analyzeConditionSuggestions(summary, activeConditions);
+    }
+
+    // Return updated document with AI summary and suggestions
     const updatedDoc: Document = {
       ...document,
       aiStructuredSummary: summary || undefined,
       aiSummaryStatus: summary ? "ready" : "error",
       aiSummaryGeneratedAt: new Date().toISOString(),
       aiSummaryError: error,
+      aiConditionSuggestions: suggestions,
       updatedAt: new Date().toISOString(),
     };
 
@@ -114,7 +127,8 @@ export async function POST(
 
     // Extract document from body to return error response
     try {
-      const document = (await request.json()) as Document;
+      const requestBody = await request.json();
+      const document: Document = requestBody.document || requestBody;
       return NextResponse.json(
         {
           ...document,

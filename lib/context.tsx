@@ -32,6 +32,20 @@ type AppContextType = {
   updateDocument: (document: Document) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
 
+  // Document-Condition suggestion actions
+  linkDocumentToExistingCondition: (documentId: string, conditionId: string) => Promise<void>;
+  createNewConditionFromSuggestion: (
+    suggestion: import("./types").DocumentConditionSuggestion,
+    documentId: string
+  ) => Promise<void>;
+  dismissConditionSuggestion: (documentId: string, suggestionIndex: number) => Promise<void>;
+  acceptConditionSuggestionWithManualSelect: (
+    documentId: string,
+    suggestionIndex: number,
+    selectedConditionId: string
+  ) => Promise<void>;
+  unlinkDocumentFromCondition: (documentId: string, conditionId: string) => Promise<void>;
+
   // Share actions
   createShare: (scope: "emergency" | "continuity", selectedRecordIds: string[]) => Promise<Share>;
   getShare: (shareId: string) => Promise<Share | null>;
@@ -59,21 +73,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const wallet = await storage.initializeWallet();
         setPatient(wallet.patient);
         setRecords(wallet.records);
-
-        // Load documents from API
-        try {
-          const response = await fetch("/api/documents");
-          if (response.ok) {
-            const docs = await response.json();
-            setDocuments(docs);
-          } else {
-            // Fallback to wallet documents if API fails
-            setDocuments(wallet.documents);
-          }
-        } catch (error) {
-          console.warn("Failed to load documents from API, using wallet data:", error);
-          setDocuments(wallet.documents);
-        }
+        // Load documents from wallet (client-side storage)
+        // API is only used for document creation/updates, not for loading
+        const walletDocs = wallet.documents || [];
+        setDocuments(walletDocs);
       } catch (error) {
         console.error("Failed to initialize wallet:", error);
       } finally {
@@ -96,7 +99,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const wallet: Wallet = {
       patient: updates.patient ?? patient!,
       records: updates.records ?? records,
-      documents: updates.documents ?? documents,
+      documents: updates.documents ?? (Array.isArray(documents) ? documents : []),
       shares: (await storage.getWallet())?.shares || {},
     };
     await storage.setWallet(wallet);
@@ -150,6 +153,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     category?: string;
   }): Promise<Document> => {
     try {
+      // Ensure documents is an array before proceeding
+      const currentDocs = Array.isArray(documents) ? documents : [];
+      
       if (params.file) {
         // File document
         const formData = new FormData();
@@ -169,7 +175,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
 
         const newDocument = await response.json();
-        const updatedDocuments = [...documents, newDocument];
+        const updatedDocuments = [...currentDocs, newDocument];
         setDocuments(updatedDocuments);
         await persistWallet({ documents: updatedDocuments });
 
@@ -196,7 +202,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
 
         const newDocument = await response.json();
-        const updatedDocuments = [...documents, newDocument];
+        const updatedDocuments = [...currentDocs, newDocument];
         setDocuments(updatedDocuments);
         await persistWallet({ documents: updatedDocuments });
 
@@ -216,10 +222,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Fire-and-forget: don't wait for response, but fetch updates
     const processAI = async () => {
       try {
+        // Get active conditions for condition linking suggestions
+        const activeConditions = records.filter(
+          (r) => r.type === "condition" && r.status === "active"
+        );
+
         const response = await fetch(`/api/documents/${newDocument.id}/summarize`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newDocument),
+          body: JSON.stringify({
+            document: newDocument,
+            activeConditions,
+          }),
         });
 
         if (!response.ok) {
@@ -268,6 +282,208 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       console.error("Failed to delete document:", error);
       throw error;
     }
+  };
+
+  // Document-Condition suggestion actions
+  const linkDocumentToExistingCondition = async (documentId: string, conditionId: string) => {
+    // Update document: add conditionId to linkedConditionIds
+    const updatedDocuments = documents.map((d) => {
+      if (d.id === documentId) {
+        const linkedIds = d.linkedConditionIds || [];
+        if (!linkedIds.includes(conditionId)) {
+          linkedIds.push(conditionId);
+        }
+        return {
+          ...d,
+          linkedConditionIds: linkedIds,
+        };
+      }
+      return d;
+    });
+
+    // Update condition: add documentId to linkedDocumentIds
+    const updatedRecords = records.map((r) => {
+      if (r.id === conditionId && r.type === "condition") {
+        const docIds = ((r as any).linkedDocumentIds as string[] | undefined) || [];
+        if (!docIds.includes(documentId)) {
+          docIds.push(documentId);
+        }
+        return {
+          ...r,
+          linkedDocumentIds: docIds,
+        };
+      }
+      return r;
+    });
+
+    setDocuments(updatedDocuments);
+    setRecords(updatedRecords);
+    await persistWallet({ documents: updatedDocuments, records: updatedRecords });
+  };
+
+  const createNewConditionFromSuggestion = async (
+    suggestion: import("./types").DocumentConditionSuggestion,
+    documentId: string
+  ) => {
+    // Create new condition with ai-suggested source
+    const newCondition: Record = {
+      id: Math.random().toString(36).substring(2, 11),
+      type: "condition",
+      name: suggestion.conditionName,
+      status: "active",
+      source: "ai-suggested",
+      linkedDocumentIds: [documentId],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    } as Record;
+
+    // Add to records
+    const updatedRecords = [...records, newCondition];
+
+    // Update document: add conditionId to linkedConditionIds and mark suggestion as accepted
+    const currentDoc = documents.find((d) => d.id === documentId);
+    const currentSuggestions = currentDoc?.aiConditionSuggestions || [];
+    const suggestionIndex = currentSuggestions.indexOf(suggestion);
+
+    const updatedDocuments = documents.map((d) => {
+      if (d.id === documentId) {
+        const linkedIds = d.linkedConditionIds || [];
+        if (!linkedIds.includes(newCondition.id)) {
+          linkedIds.push(newCondition.id);
+        }
+
+        // Mark suggestion as accepted
+        let updatedSuggestions = [...(d.aiConditionSuggestions || [])];
+        if (suggestionIndex >= 0 && updatedSuggestions[suggestionIndex]) {
+          updatedSuggestions[suggestionIndex] = {
+            ...updatedSuggestions[suggestionIndex],
+            reviewed: true,
+            accepted: true,
+            matchedConditionId: newCondition.id,
+          };
+        }
+
+        return {
+          ...d,
+          linkedConditionIds: linkedIds,
+          aiConditionSuggestions: updatedSuggestions,
+        };
+      }
+      return d;
+    });
+
+    setRecords(updatedRecords);
+    setDocuments(updatedDocuments);
+    await persistWallet({ records: updatedRecords, documents: updatedDocuments });
+  };
+
+  const dismissConditionSuggestion = async (documentId: string, suggestionIndex: number) => {
+    // Mark suggestion as reviewed and dismissed (rejected)
+    const updatedDocuments = documents.map((d) => {
+      if (d.id === documentId && d.aiConditionSuggestions) {
+        const suggestions = [...d.aiConditionSuggestions];
+        if (suggestions[suggestionIndex]) {
+          suggestions[suggestionIndex] = {
+            ...suggestions[suggestionIndex],
+            reviewed: true,
+            accepted: false,
+          };
+        }
+        return {
+          ...d,
+          aiConditionSuggestions: suggestions,
+        };
+      }
+      return d;
+    });
+
+    setDocuments(updatedDocuments);
+    await persistWallet({ documents: updatedDocuments });
+  };
+
+  // Accept a suggestion and manually select/link to a chosen condition
+  const acceptConditionSuggestionWithManualSelect = async (
+    documentId: string,
+    suggestionIndex: number,
+    selectedConditionId: string
+  ) => {
+    // Link document to the selected condition
+    const updatedDocuments = documents.map((d) => {
+      if (d.id === documentId) {
+        const linkedIds = d.linkedConditionIds || [];
+        if (!linkedIds.includes(selectedConditionId)) {
+          linkedIds.push(selectedConditionId);
+        }
+        
+        // Mark suggestion as accepted
+        let suggestions = d.aiConditionSuggestions ? [...d.aiConditionSuggestions] : [];
+        if (suggestions[suggestionIndex]) {
+          suggestions[suggestionIndex] = {
+            ...suggestions[suggestionIndex],
+            reviewed: true,
+            accepted: true,
+            matchedConditionId: selectedConditionId,
+          };
+        }
+        
+        return {
+          ...d,
+          linkedConditionIds: linkedIds,
+          aiConditionSuggestions: suggestions,
+        };
+      }
+      return d;
+    });
+
+    // Update condition: add documentId to linkedDocumentIds
+    const updatedRecords = records.map((r) => {
+      if (r.id === selectedConditionId && r.type === "condition") {
+        const docIds = ((r as any).linkedDocumentIds as string[] | undefined) || [];
+        if (!docIds.includes(documentId)) {
+          docIds.push(documentId);
+        }
+        return {
+          ...r,
+          linkedDocumentIds: docIds,
+        };
+      }
+      return r;
+    });
+
+    setDocuments(updatedDocuments);
+    setRecords(updatedRecords);
+    await persistWallet({ documents: updatedDocuments, records: updatedRecords });
+  };
+
+  // Unlink a document from a condition (bidirectional)
+  const unlinkDocumentFromCondition = async (documentId: string, conditionId: string) => {
+    // Remove condition from document's linked IDs
+    const updatedDocuments = documents.map((d) => {
+      if (d.id === documentId) {
+        return {
+          ...d,
+          linkedConditionIds: (d.linkedConditionIds || []).filter((id) => id !== conditionId),
+        };
+      }
+      return d;
+    });
+
+    // Remove document from condition's linked IDs
+    const updatedRecords = records.map((r) => {
+      if (r.id === conditionId && r.type === "condition") {
+        return {
+          ...r,
+          linkedDocumentIds: (((r as any).linkedDocumentIds as string[] | undefined) || []).filter(
+            (id) => id !== documentId
+          ),
+        };
+      }
+      return r;
+    });
+
+    setDocuments(updatedDocuments);
+    setRecords(updatedRecords);
+    await persistWallet({ documents: updatedDocuments, records: updatedRecords });
   };
 
   // Share actions
@@ -358,6 +574,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addDocument,
     updateDocument,
     deleteDocument,
+    linkDocumentToExistingCondition,
+    createNewConditionFromSuggestion,
+    dismissConditionSuggestion,
+    acceptConditionSuggestionWithManualSelect,
+    unlinkDocumentFromCondition,
     createShare,
     getShare,
     getAllShares,

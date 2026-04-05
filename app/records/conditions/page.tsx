@@ -3,14 +3,19 @@
 import { useState } from "react";
 import { useApp } from "@/lib/context";
 import { ConditionRecord } from "@/lib/types";
-import { SourceBadge, LastUpdated } from "@/lib/metadata-badges";
 import Link from "next/link";
+import { ConditionCard } from "@/app/components/ConditionCard";
 
 export default function ConditionsPage() {
-  const { records, addRecord, deleteRecord } = useApp();
+  const { records, addRecord, deleteRecord, documents } = useApp();
   const [showForm, setShowForm] = useState(false);
 
   const conditions = records.filter((r) => r.type === "condition") as ConditionRecord[];
+
+  // Helper to get documents linked to a condition
+  const getLinkedDocuments = (conditionId: string) => {
+    return documents.filter((d) => d.linkedConditionIds?.includes(conditionId) || false);
+  };
 
   return (
     <div className="page-container">
@@ -50,52 +55,12 @@ export default function ConditionsPage() {
         ) : (
           <div className="record-list">
             {conditions.map((condition) => (
-              <div key={condition.id} className="record-list-item record-item-condition">
-                <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                  <div className="flex-1">
-                    <h3 className="record-list-item-title">{condition.name}</h3>
-
-                    <div className="flex items-center gap-2 mt-3 mb-2">
-                      <span className="text-xs font-bold text-slate-600 uppercase">Status:</span>
-                      <span
-                        className={`text-sm font-bold ${
-                          condition.status === "active"
-                            ? "text-orange-700"
-                            : condition.status === "chronic"
-                            ? "text-rose-700"
-                            : "text-emerald-700"
-                        }`}
-                      >
-                        {condition.status}
-                      </span>
-                    </div>
-
-                    {condition.onsetDate && (
-                      <p className="text-sm text-slate-600 mb-2">
-                        <strong>Onset:</strong> {new Date(condition.onsetDate).toLocaleDateString()}
-                      </p>
-                    )}
-
-                    {condition.notes && (
-                      <p className="text-xs text-slate-600 mb-3 bg-slate-50 p-2 rounded border border-slate-200">
-                        {condition.notes}
-                      </p>
-                    )}
-
-                    <div className="metadata-line">
-                      <SourceBadge source={condition.source} />
-                      <LastUpdated timestamp={condition.updatedAt} />
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => deleteRecord(condition.id)}
-                    className="btn-danger btn-sm text-sm whitespace-nowrap flex-shrink-0 mt-3 sm:mt-0"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
+              <ConditionCard
+                key={condition.id}
+                condition={condition}
+                linkedDocuments={getLinkedDocuments(condition.id)}
+                onDelete={deleteRecord}
+              />
             ))}
           </div>
         )}
