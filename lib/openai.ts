@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { ConditionRecord, DocumentConditionSuggestion } from "./types";
+import { ConditionRecord, DocumentConditionSuggestion, ExtractedEntity, ExistingEntity, EntityMatchResult, AllergyRecord, MedicationRecord } from "./types";
 
 const apiKey = process.env.OPENAI_API_KEY;
 
@@ -39,19 +39,22 @@ If there is no relevant information simply state "None".
 DOCUMENT CONTENT:
 ${truncatedContent}
 
-Provide a concise structured summary with these sections (if applicable):
+Provide a concise structured summary with these sections (if applicable). Use clear section headers with colons.
 
 **Document Type:** [Clinical note, Lab result, Prescription, Imaging report, etc.]
 **Clinical Summary:** [1-2 sentences of key clinical findings]
 **Key Findings:** [Bullet points of important results/findings]
-**Medications Mentioned:** [If any]
-**Conditions/Diagnoses:** [If any]
-**Allergies Mentioned:** [If any]
-**Important Dates:** [If any]
-**Provider Notes:** [Anything relevant for clinical care]
-**Limitations:** [Data quality, incomplete info, or uncertainty]
+**Medications Mentioned:**
+[List medications, one per line, or "None"]
+**Conditions/Diagnoses:**
+[List conditions, one per line, or "None"]
+**Allergies Mentioned:**
+[List allergies, one per line, or "None"]
+**Important Dates:** [If any, or "None"] 
+**Provider Notes:** [Anything relevant for clinical care, or "None"]
+**Limitations:** [Data quality, incomplete info, or uncertainty, or "None"]
 
-Keep it professional, concise, and clinically relevant. Avoid markdown formatting. Use plain text with clear section headers.`;
+IMPORTANT: Each section header must be on its own line, followed by the content. Use "None" explicitly if no information is available for a section.`;
 
     const message = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -104,19 +107,22 @@ export async function generateImageSummary(
 Limit yourself to summarizing using the information present in the original document, and do not add any of your own interpretations. 
 If there is no relevant information simply state "None".
 
-Provide a concise structured summary with these sections (if applicable):
+Provide a concise structured summary with these sections (if applicable). Use clear section headers with colons.
 
 **Document Type:** [Clinical note, Lab result, Prescription, Imaging report, etc.]
 **Clinical Summary:** [1-2 sentences of key clinical findings]
 **Key Findings:** [Bullet points of important results/findings]
-**Medications Mentioned:** [If any]
-**Conditions/Diagnoses:** [If any]
-**Allergies Mentioned:** [If any]
-**Important Dates:** [If any]
-**Provider Notes:** [Anything relevant for clinical care]
-**Limitations:** [Data quality, incomplete info, or uncertainty]
+**Medications Mentioned:**
+[List medications, one per line, or "None"]
+**Conditions/Diagnoses:**
+[List conditions, one per line, or "None"]
+**Allergies Mentioned:**
+[List allergies, one per line, or "None"]
+**Important Dates:** [If any, or "None"]
+**Provider Notes:** [Anything relevant for clinical care, or "None"]
+**Limitations:** [Data quality, incomplete info, or uncertainty, or "None"]
 
-Keep it professional, concise, and clinically relevant. Avoid markdown formatting. Use plain text with clear section headers.`,
+IMPORTANT: Each section header must be on its own line, followed by the content. Use "None" explicitly if no information is available for a section.`,
             },
           ],
         },
@@ -218,5 +224,241 @@ Rules:
   } catch (error) {
     console.error("Failed to analyze condition suggestions:", error);
     return [];
+  }
+}
+
+/**
+ * Parse document summary text into structured extracted entities
+ * Extracts medications, conditions, and allergies from the summary sections
+ */
+export function parseDocumentSummaryIntoEntities(summary: string): ExtractedEntity[] {
+  const entities: ExtractedEntity[] = [];
+
+  // Parse medications section (flexible regex for markdown or plain text)
+  const medicationsMatch = summary.match(/(?:\*\*)?Medications Mentioned:?(?:\*\*)?\s*\n?([\s\S]*?)(?=\n(?:\*\*)?[A-Z]|$)/i);
+  if (medicationsMatch) {
+    const medicationsText = medicationsMatch[1].trim();
+    if (medicationsText && medicationsText.toLowerCase() !== "none") {
+      const lines = medicationsText.split(/[\n\*\-•]/);
+      for (const line of lines) {
+        const clean = line.trim();
+        if (clean && clean.length > 0 && !clean.startsWith('(')) {
+          entities.push({ type: 'medication', name: clean });
+        }
+      }
+    }
+  }
+
+  // Parse conditions/diagnoses section (flexible regex for markdown or plain text)
+  const conditionsMatch = summary.match(/(?:\*\*)?Conditions\/Diagnoses:?(?:\*\*)?\s*\n?([\s\S]*?)(?=\n(?:\*\*)?[A-Z]|$)/i);
+  if (conditionsMatch) {
+    const conditionsText = conditionsMatch[1].trim();
+    if (conditionsText && conditionsText.toLowerCase() !== "none") {
+      const lines = conditionsText.split(/[\n\*\-•]/);
+      for (const line of lines) {
+        const clean = line.trim();
+        if (clean && clean.length > 0 && !clean.startsWith('(')) {
+          entities.push({ type: 'condition', name: clean });
+        }
+      }
+    }
+  }
+
+  // Parse allergies section (flexible regex for markdown or plain text)
+  const allergiesMatch = summary.match(/(?:\*\*)?Allergies Mentioned:?(?:\*\*)?\s*\n?([\s\S]*?)(?=\n(?:\*\*)?[A-Z]|$)/i);
+  if (allergiesMatch) {
+    const allergiesText = allergiesMatch[1].trim();
+    if (allergiesText && allergiesText.toLowerCase() !== "none") {
+      const lines = allergiesText.split(/[\n\*\-•]/);
+      for (const line of lines) {
+        const clean = line.trim();
+        if (clean && clean.length > 0 && !clean.startsWith('(')) {
+          entities.push({ type: 'allergy', name: clean });
+        }
+      }
+    }
+  }
+
+  console.log("🔍 parseDocumentSummaryIntoEntities - input summary:", summary);
+  console.log("🔍 parseDocumentSummaryIntoEntities - extracted:", entities);
+  return entities;
+}
+
+/**
+ * Generate unified AI entity matching results
+ * Compares extracted entities from document against existing patient entities
+ * Returns structured match decisions for all entity types
+ */
+export async function generateUnifiedEntityMatches(
+  extractedEntities: ExtractedEntity[],
+  existingEntities: ExistingEntity[]
+): Promise<EntityMatchResult[]> {
+  if (!openai) {
+    return [];
+  }
+
+  if (extractedEntities.length === 0) {
+    return [];
+  }
+
+  try {
+    const extractedFormatted = extractedEntities
+      .map((e) => `- ${e.type}: ${e.name}`)
+      .join("\n");
+
+    const existingFormatted = existingEntities.length > 0
+      ? existingEntities
+        .map((e) => `- ${e.type}: ${e.name} (id: ${e.id})`)
+        .join("\n")
+      : "None";
+
+    const prompt = `You are a medical entity matching system. Compare extracted medical entities from a document against existing patient entities.
+
+RULES:
+1. Compare only entities of the SAME type (condition vs condition, allergy vs allergy, medication vs medication)
+2. Never cross-match different types
+3. Normalize obvious synonyms ("high blood pressure" = "Hypertension", "penicillin allergy" = "Penicillin", etc.)
+4. For medications, normalize dosages and frequencies when matching
+5. Only suggest link-existing if confidence >= 0.6
+6. Always provide a normalizedName for display/storage
+7. Respond with ONLY a JSON array, no other text
+
+**Extracted Entities:**
+${extractedFormatted}
+
+**Existing Patient Entities:**
+${existingFormatted}
+
+For each extracted entity, return ONE result JSON object with this structure:
+{
+  "type": "condition" | "allergy" | "medication",
+  "extractedName": "string (exact name from above)",
+  "finalName": "string (normalized/standardized name)",
+  "action": "link-existing" | "create-new",
+  "matchedId": "string (only if action is link-existing, match an ID from above)",
+  "confidence": number (0.0-1.0),
+  "reason": "string (brief explanation)"
+}
+
+Return ONLY a JSON array like: [{ ... }, { ... }]
+Return empty array [] if no extracted entities.`;
+
+    const message = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_tokens: 2048,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const responseText = message.choices[0]?.message?.content || "[]";
+
+    try {
+      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : responseText;
+      const matches = JSON.parse(jsonStr) as EntityMatchResult[];
+
+      return matches.filter((m) => {
+        return (
+          m.type &&
+          m.extractedName &&
+          m.finalName &&
+          m.action &&
+          typeof m.confidence === "number"
+        );
+      });
+    } catch (parseError) {
+      console.warn("Failed to parse entity matches JSON:", responseText, parseError);
+      return [];
+    }
+  } catch (error) {
+    console.error("Failed to generate entity matches:", error);
+    return [];
+  }
+}
+
+/**
+ * Helper: Derive source status based on linked documents
+ * Records with at least one linked document should be marked 'document-backed'
+ * Otherwise, remain 'self-reported' (or other valid source)
+ */
+export function deriveRecordSource(
+  linkedDocumentIds?: string[]
+): "document-backed" | "self-reported" {
+  if (linkedDocumentIds && linkedDocumentIds.length > 0) {
+    return "document-backed";
+  }
+  return "self-reported";
+}
+
+/**
+ * Generate a comprehensive condition-level summary from linked documents
+ * Synthesizes all document summaries into a cohesive condition progression narrative
+ */
+export async function generateConditionSummary(
+  condition: ConditionRecord,
+  linkedDocuments: Array<{
+    title: string;
+    createdAt?: string;
+    aiStructuredSummary?: string;
+    textContent?: string;
+  }>
+): Promise<string | null> {
+  if (!openai) {
+    return null;
+  }
+
+  try {
+    console.log("🟡 generateConditionSummary called for:", condition.name);
+    console.log("📄 Linked documents:", linkedDocuments.length);
+    
+    if (linkedDocuments.length === 0) {
+      // If there are no documents, use condition notes + existing summary
+      console.warn("⚠️ No linked documents to summarize");
+      return null;
+    }
+
+    // Format linked documents for the prompt
+    const documentsFormatted = linkedDocuments
+      .map((doc) => {
+        const date = doc.createdAt
+          ? new Date(doc.createdAt).toLocaleDateString()
+          : "Unknown date";
+        const summary = doc.aiStructuredSummary || doc.textContent || "[No content]";
+        return `**${doc.title}** (${date})\n${summary}`;
+      })
+      .join("\n\n---\n\n");
+
+    const prompt = `You are a medical record analyzer. Synthesize the following documents into a single comprehensive condition progression summary.
+
+**Condition:** ${condition.name}
+**Status:** ${condition.status}
+${condition.onsetDate ? `**Onset Date:** ${new Date(condition.onsetDate).toLocaleDateString()}` : ""}
+${condition.notes ? `**Patient Notes:** ${condition.notes}` : ""}
+${condition.progressSummary ? `**Previous Summary:**\n${condition.progressSummary}` : ""}
+
+**Linked Medical Documents:**
+${documentsFormatted}
+
+Create a concise but comprehensive condition progression summary that includes:
+1. Initial diagnosis or presentation
+2. Key findings and test results from documents
+3. Treatment changes or medication adjustments
+4. Current status and recent updates
+5. Notable trends or improvements/worsening
+
+Keep it professional, clinically relevant, and suitable for a health record. Focus on synthesizing information across all documents to show progression over time.`;
+
+    console.log("🟡 Calling OpenAI API...");
+    const message = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_tokens: 1024,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const summaryText = message.choices[0]?.message?.content || null;
+    console.log("✅ API response received, summary length:", summaryText?.length || 0);
+    return summaryText;
+  } catch (error) {
+    console.error("Failed to generate condition summary:", error);
+    return null;
   }
 }

@@ -8,11 +8,16 @@ import { AlertTriangle, Trash2, Plus } from "lucide-react";
 import { SourceBadge, LastUpdated } from "@/lib/metadata-badges";
 
 export default function AllergiesPage() {
-  const { records, addRecord, deleteRecord } = useApp();
+  const { records, addRecord, updateRecord, deleteRecord } = useApp();
   const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingAllergy, setEditingAllergy] = useState<AllergyRecord | null>(null);
 
   const allergies = records.filter((r) => r.type === "allergy") as AllergyRecord[];
+
+  const handleEditAllergy = (allergy: AllergyRecord) => {
+    setEditingAllergy(allergy);
+    setShowForm(true);
+  };
 
   return (
     <div className="page-container">
@@ -31,7 +36,10 @@ export default function AllergiesPage() {
               </div>
             </div>
           </div>
-          <button onClick={() => setShowForm(true)} className="btn-primary btn-sm whitespace-nowrap flex-shrink-0 flex items-center gap-2">
+          <button onClick={() => {
+            setEditingAllergy(null);
+            setShowForm(true);
+          }} className="btn-primary btn-sm whitespace-nowrap flex-shrink-0 flex items-center gap-2">
             <Plus size={16} /> Add Allergy
           </button>
         </div>
@@ -39,12 +47,22 @@ export default function AllergiesPage() {
         {/* Form Modal */}
         {showForm && (
           <AllergyForm
+            allergy={editingAllergy}
             onClose={() => {
               setShowForm(false);
+              setEditingAllergy(null);
             }}
             onSave={async (data) => {
-              await addRecord(data);
+              if (editingAllergy) {
+                await updateRecord({
+                  ...editingAllergy,
+                  ...data,
+                });
+              } else {
+                await addRecord(data);
+              }
               setShowForm(false);
+              setEditingAllergy(null);
             }}
           />
         )}
@@ -99,12 +117,20 @@ export default function AllergiesPage() {
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => deleteRecord(allergy.id)}
-                    className="btn-danger btn-sm text-sm whitespace-nowrap flex-shrink-0 mt-3 sm:mt-0"
-                  >
-                    Delete
-                  </button>
+                  <div className="flex flex-col gap-2 mt-3 sm:mt-0">
+                    <button
+                      onClick={() => handleEditAllergy(allergy)}
+                      className="btn-secondary btn-sm text-sm whitespace-nowrap flex-shrink-0"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => deleteRecord(allergy.id)}
+                      className="btn-danger btn-sm text-sm whitespace-nowrap flex-shrink-0"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -116,18 +142,20 @@ export default function AllergiesPage() {
 }
 
 function AllergyForm({
+  allergy,
   onClose,
   onSave,
 }: {
+  allergy?: AllergyRecord | null;
   onClose: () => void;
   onSave: (data: any) => Promise<void>;
 }) {
-  const [allergen, setAllergen] = useState("");
+  const [allergen, setAllergen] = useState(allergy?.allergen || "");
   const [severity, setSeverity] = useState<"mild" | "moderate" | "severe" | "">(
-    ""
+    allergy?.severity || ""
   );
-  const [reaction, setReaction] = useState("");
-  const [notes, setNotes] = useState("");
+  const [reaction, setReaction] = useState(allergy?.reaction || "");
+  const [notes, setNotes] = useState(allergy?.notes || "");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -137,11 +165,13 @@ function AllergyForm({
     setLoading(true);
     try {
       await onSave({
+        ...(allergy ? { id: allergy.id, createdAt: allergy.createdAt } : {}),
         type: "allergy",
         allergen,
         severity: severity || undefined,
         reaction: reaction || undefined,
-        source: "self-reported",
+        source: allergy?.source || "self-reported",
+        linkedDocumentIds: allergy?.linkedDocumentIds,
         notes: notes || undefined,
       });
     } finally {
@@ -152,7 +182,9 @@ function AllergyForm({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">Add Allergy</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">
+          {allergy ? 'Edit Allergy' : 'Add Allergy'}
+        </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="label">Allergen *</label>

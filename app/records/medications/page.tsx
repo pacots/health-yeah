@@ -1,32 +1,40 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { Pill, Plus } from "lucide-react";
 import { useApp } from "@/lib/context";
 import { MedicationRecord } from "@/lib/types";
 import { SourceBadge, LastUpdated } from "@/lib/metadata-badges";
-import Link from "next/link";
-import { Pill, Plus } from "lucide-react";
 
 export default function MedicationsPage() {
-  const { records, addRecord, deleteRecord } = useApp();
+  const { records, addRecord, updateRecord, deleteRecord } = useApp();
   const [showForm, setShowForm] = useState(false);
+  const [editingMedication, setEditingMedication] = useState<MedicationRecord | null>(null);
 
   const medications = records.filter((r) => r.type === "medication") as MedicationRecord[];
+
+  const handleEditMedication = (medication: MedicationRecord) => {
+    setEditingMedication(medication);
+    setShowForm(true);
+  };
 
   return (
     <div className="page-container">
       <div className="page-max-width">
-        {/* Header */}
         <div className="page-header flex flex-col sm:flex-row justify-between items-start gap-4">
           <div className="min-w-0">
             <Link href="/" className="back-link">
-              ← Back to Dashboard
+              â† Back to Dashboard
             </Link>
             <h1 className="page-title">Medications</h1>
             <p className="page-subtitle">Your current medications and supplements</p>
           </div>
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => {
+              setEditingMedication(null);
+              setShowForm(true);
+            }}
             className="btn-primary btn-sm whitespace-nowrap flex-shrink-0 inline-flex items-center gap-2"
           >
             <Plus size={16} />
@@ -34,18 +42,28 @@ export default function MedicationsPage() {
           </button>
         </div>
 
-        {/* Form Modal */}
         {showForm && (
           <MedicationForm
-            onClose={() => setShowForm(false)}
-            onSave={async (data) => {
-              await addRecord(data);
+            medication={editingMedication}
+            onClose={() => {
               setShowForm(false);
+              setEditingMedication(null);
+            }}
+            onSave={async (data) => {
+              if (editingMedication) {
+                await updateRecord({
+                  ...editingMedication,
+                  ...data,
+                });
+              } else {
+                await addRecord(data);
+              }
+              setShowForm(false);
+              setEditingMedication(null);
             }}
           />
         )}
 
-        {/* List */}
         {medications.length === 0 ? (
           <div className="empty-state">
             <Pill size={36} className="empty-state-icon mx-auto" />
@@ -60,7 +78,7 @@ export default function MedicationsPage() {
                   <div className="flex-1">
                     <h3 className="record-list-item-title">{med.name}</h3>
                     <p className="text-sm text-slate-700 font-semibold mt-2 mb-1">
-                      {med.dosage} • {med.frequency}
+                      {med.dosage} â€¢ {med.frequency}
                     </p>
                     {med.indication && (
                       <p className="text-sm text-slate-600 mb-2">
@@ -77,12 +95,20 @@ export default function MedicationsPage() {
                       <LastUpdated timestamp={med.updatedAt} />
                     </div>
                   </div>
-                  <button
-                    onClick={() => deleteRecord(med.id)}
-                    className="btn-danger btn-sm text-sm whitespace-nowrap flex-shrink-0 mt-3 sm:mt-0"
-                  >
-                    Delete
-                  </button>
+                  <div className="flex flex-col gap-2 mt-3 sm:mt-0">
+                    <button
+                      onClick={() => handleEditMedication(med)}
+                      className="btn-secondary btn-sm text-sm whitespace-nowrap flex-shrink-0"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => deleteRecord(med.id)}
+                      className="btn-danger btn-sm text-sm whitespace-nowrap flex-shrink-0"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -94,17 +120,19 @@ export default function MedicationsPage() {
 }
 
 function MedicationForm({
+  medication,
   onClose,
   onSave,
 }: {
+  medication?: MedicationRecord | null;
   onClose: () => void;
   onSave: (data: any) => Promise<void>;
 }) {
-  const [name, setName] = useState("");
-  const [dosage, setDosage] = useState("");
-  const [frequency, setFrequency] = useState("");
-  const [indication, setIndication] = useState("");
-  const [notes, setNotes] = useState("");
+  const [name, setName] = useState(medication?.name || "");
+  const [dosage, setDosage] = useState(medication?.dosage || "");
+  const [frequency, setFrequency] = useState(medication?.frequency || "");
+  const [indication, setIndication] = useState(medication?.indication || "");
+  const [notes, setNotes] = useState(medication?.notes || "");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -114,12 +142,14 @@ function MedicationForm({
     setLoading(true);
     try {
       await onSave({
+        ...(medication ? { id: medication.id, createdAt: medication.createdAt } : {}),
         type: "medication",
         name,
         dosage,
         frequency,
         indication: indication || undefined,
-        source: "self-reported",
+        source: medication?.source || "self-reported",
+        linkedDocumentIds: medication?.linkedDocumentIds,
         notes: notes || undefined,
       });
     } finally {
@@ -130,7 +160,9 @@ function MedicationForm({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Add Medication</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          {medication ? "Edit Medication" : "Add Medication"}
+        </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="label">Medication Name *</label>
@@ -196,7 +228,7 @@ function MedicationForm({
               disabled={loading}
               className="btn-primary flex-1"
             >
-              {loading ? "Saving..." : "Save"}
+              {loading ? "Saving..." : medication ? "Update" : "Save"}
             </button>
             <button
               type="button"

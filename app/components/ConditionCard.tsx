@@ -1,33 +1,77 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChevronDown, ChevronRight, Paperclip, Plus, X } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  Paperclip,
+  Plus,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { ConditionRecord, Document } from "@/lib/types";
 import { useApp } from "@/lib/context";
 import { SourceBadge, LastUpdated } from "@/lib/metadata-badges";
+import { deriveRecordSource } from "@/lib/openai";
 
 interface ConditionCardProps {
   condition: ConditionRecord;
   linkedDocuments: Document[];
   onDelete: (id: string) => Promise<void>;
+  onEdit?: (condition: ConditionRecord) => void;
 }
 
-export function ConditionCard({ condition, linkedDocuments, onDelete }: ConditionCardProps) {
+export function ConditionCard({ condition, linkedDocuments, onDelete, onEdit }: ConditionCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isSummarizing, setIsSummarizing] = useState(false);
   const [linkingDocumentId, setLinkingDocumentId] = useState<string | null>(null);
-  const { documents, unlinkDocumentFromCondition } = useApp();
+  const [isLinking, setIsLinking] = useState(false);
+  const { documents, unlinkDocumentFromCondition, summarizeCondition, linkDocumentToRecord } = useApp();
 
   const availableDocuments = documents.filter(
     (d) => !linkedDocuments.find((ld) => ld.id === d.id)
   );
+
+  const derivedSource = deriveRecordSource(condition.linkedDocumentIds);
+
+  const handleLinkDocument = async (documentId: string) => {
+    setIsLinking(true);
+    try {
+      await linkDocumentToRecord(documentId, condition.id, "condition");
+      setLinkingDocumentId(null);
+    } catch (error) {
+      console.error("Failed to link document:", error);
+    } finally {
+      setIsLinking(false);
+    }
+  };
 
   const handleUnlinkDocument = async (documentId: string) => {
     try {
       await unlinkDocumentFromCondition(documentId, condition.id);
     } catch (error) {
       console.error("Failed to unlink document:", error);
+    }
+  };
+
+  const handleSummarize = async () => {
+    if (linkedDocuments.length === 0) {
+      alert("No linked documents to summarize");
+      return;
+    }
+
+    setIsSummarizing(true);
+    try {
+      await summarizeCondition(condition.id);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    } catch (error) {
+      console.error("Failed to summarize:", error);
+      alert("Failed to generate summary");
+    } finally {
+      setIsSummarizing(false);
     }
   };
 
@@ -94,7 +138,7 @@ export function ConditionCard({ condition, linkedDocuments, onDelete }: Conditio
             )}
 
             <div className="metadata-line">
-              <SourceBadge source={condition.source} />
+              <SourceBadge source={derivedSource} />
               <LastUpdated timestamp={condition.updatedAt} />
               {linkedDocuments.length > 0 && (
                 <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded inline-flex items-center gap-1.5">
@@ -105,15 +149,40 @@ export function ConditionCard({ condition, linkedDocuments, onDelete }: Conditio
             </div>
           </div>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowDeleteConfirm(true);
-            }}
-            className="btn-danger btn-sm text-sm whitespace-nowrap flex-shrink-0 mt-3 sm:mt-0"
-          >
-            Delete
-          </button>
+          <div className="flex flex-col gap-2 mt-3 sm:mt-0">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                void handleSummarize();
+              }}
+              disabled={isSummarizing || linkedDocuments.length === 0}
+              className="btn-secondary btn-sm text-sm whitespace-nowrap flex-shrink-0 inline-flex items-center justify-center gap-2"
+              title={linkedDocuments.length === 0 ? "No linked documents" : "Generate condition summary"}
+            >
+              {isSummarizing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+              <span>{isSummarizing ? "Summarizing..." : "Summarize"}</span>
+            </button>
+            {onEdit && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(condition);
+                }}
+                className="btn-secondary btn-sm text-sm whitespace-nowrap flex-shrink-0"
+              >
+                Edit
+              </button>
+            )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDeleteConfirm(true);
+              }}
+              className="btn-danger btn-sm text-sm whitespace-nowrap flex-shrink-0"
+            >
+              Delete
+            </button>
+          </div>
         </div>
       </div>
 
@@ -146,9 +215,7 @@ export function ConditionCard({ condition, linkedDocuments, onDelete }: Conditio
                     className="flex items-start justify-between gap-2 p-2 bg-gray-50 rounded border border-gray-200 group hover:bg-gray-100 transition-colors"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {doc.title}
-                      </p>
+                      <p className="text-sm font-medium text-gray-900 truncate">{doc.title}</p>
                       <p className="text-xs text-gray-600">
                         {doc.kind === "text" ? "Text" : doc.extension?.toUpperCase() || "File"}
                         {" • "}
@@ -156,7 +223,7 @@ export function ConditionCard({ condition, linkedDocuments, onDelete }: Conditio
                       </p>
                     </div>
                     <button
-                      onClick={() => handleUnlinkDocument(doc.id)}
+                      onClick={() => void handleUnlinkDocument(doc.id)}
                       className="flex-shrink-0 px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
                       title="Unlink document"
                     >
@@ -169,15 +236,29 @@ export function ConditionCard({ condition, linkedDocuments, onDelete }: Conditio
 
             {linkingDocumentId ? (
               <div className="space-y-2 p-3 bg-blue-50 rounded border border-blue-200">
-                <p className="text-xs font-medium text-blue-700">Linking document...</p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setLinkingDocumentId(null)}
-                    className="flex-1 px-2 py-1 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors"
-                  >
-                    Cancel
-                  </button>
+                <p className="text-xs font-medium text-blue-700 mb-2">Select a document to link:</p>
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                  {availableDocuments.map((doc) => (
+                    <button
+                      key={doc.id}
+                      onClick={() => void handleLinkDocument(doc.id)}
+                      disabled={isLinking}
+                      className="w-full text-left px-3 py-2 text-xs bg-white hover:bg-blue-100 disabled:opacity-50 rounded border border-gray-200 transition-colors"
+                    >
+                      <p className="font-medium text-gray-900 truncate">{doc.title}</p>
+                      <p className="text-gray-600 text-xs">
+                        {doc.kind === "text" ? "Text" : doc.extension?.toUpperCase() || "File"}
+                      </p>
+                    </button>
+                  ))}
                 </div>
+                <button
+                  onClick={() => setLinkingDocumentId(null)}
+                  disabled={isLinking}
+                  className="w-full px-2 py-1 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400 disabled:opacity-50 transition-colors"
+                >
+                  {isLinking ? "Linking..." : "Cancel"}
+                </button>
               </div>
             ) : availableDocuments.length > 0 ? (
               <button
@@ -200,7 +281,7 @@ export function ConditionCard({ condition, linkedDocuments, onDelete }: Conditio
               )}
               <div className="flex justify-between">
                 <dt className="font-medium text-gray-700">Source:</dt>
-                <dd className="text-gray-600 capitalize">{condition.source || "unknown"}</dd>
+                <dd className="text-gray-600 capitalize">{derivedSource}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-medium text-gray-700">Updated:</dt>
@@ -220,7 +301,7 @@ export function ConditionCard({ condition, linkedDocuments, onDelete }: Conditio
             </p>
             <div className="flex gap-2">
               <button
-                onClick={handleDelete}
+                onClick={() => void handleDelete()}
                 disabled={isDeleting}
                 className="flex-1 px-4 py-2 bg-red-500 text-white font-medium rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
