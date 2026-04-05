@@ -3,7 +3,7 @@
 import { useApp } from "@/lib/context";
 import Link from "next/link";
 import { useState, useRef } from "react";
-import { AlertTriangle, Pill, Heart, Copy, Share2, Phone, Calendar, X, Download } from "lucide-react";
+import { AlertTriangle, Pill, Heart, Copy, Share2, Phone, Calendar, X, Download, FileText } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
 export default function EmergencySummaryPage() {
@@ -176,47 +176,75 @@ ${conditions.length === 0 ? "None" : conditions.map((c) => `• ${(c as any).nam
         {/* Emergency Header */}
         <div className="mb-8 sm:mb-10">
           <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-2">Emergency Health Card</h1>
-          <p className="text-slate-500">Critical health information at your fingertips</p>
+          <p className="text-slate-500">Complete health information for emergency responders</p>
         </div>
 
-        {/* Patient Identity */}
-        <div className="card-premium section-spacing-narrow">
-          <div className="mb-6">
-            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">Patient Information</p>
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 break-words">{patient.name}</h2>
-            <div className="flex items-center gap-4 mt-3 text-sm text-slate-600">
-              <span className="flex items-center gap-1">
-                <Calendar size={14} /> Born {new Date(patient.dateOfBirth).toLocaleDateString()}
-              </span>
+        {/* ═══════════════════════════════════════════════════════════
+            SECTION 1: BASIC INFORMATION
+            ═══════════════════════════════════════════════════════════ */}
+        <div className="mb-8">
+          <div className="card-premium section-spacing-narrow">
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-6">
+              <div className="flex-1 min-w-0">
+                <p className="section-header mb-2">Patient Profile</p>
+                <div className="flex flex-col sm:flex-row sm:items-baseline gap-3 mb-4">
+                  <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 break-words">{patient.name}</h2>
+                  {patient.bloodType && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800 border border-blue-200 whitespace-nowrap">
+                      {patient.bloodType}
+                    </span>
+                  )}
+                </div>
+                
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">Date of Birth</p>
+                    <p className="text-base text-slate-900 font-medium">{new Date(patient.dateOfBirth).toLocaleDateString()}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Age: {Math.floor((Date.now() - new Date(patient.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))} years
+                    </p>
+                  </div>
+
+                  {patient.emergencyContact && (
+                    <div className="pt-3 mt-4 border-t border-blue-200/50">
+                      <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2 flex items-center gap-2">
+                        <Phone size={14} className="text-blue-600" /> Emergency Contact
+                      </p>
+                      <p className="font-semibold text-slate-900">{patient.emergencyContact.name}</p>
+                      <p className="text-xs text-slate-500 mt-1">{patient.emergencyContact.relationship}</p>
+                      <p className="text-sm font-mono font-semibold text-blue-700 mt-2">{patient.emergencyContact.phone}</p>
+                    </div>
+                  )}
+
+                  <div className="pt-3 mt-4 border-t border-blue-200/50">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Last Updated</p>
+                    <p className="text-xs text-slate-600 mt-1">{new Date(patient.updatedAt).toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-
-          {patient.emergencyContact && (
-            <div className="pt-6 border-t border-blue-200/50">
-              <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-3 flex items-center gap-2">
-                <Phone size={14} className="text-red-600" /> Emergency Contact
-              </p>
-              <p className="text-lg font-semibold text-slate-900">{patient.emergencyContact.name}</p>
-              <p className="text-sm text-slate-600 mt-1">{patient.emergencyContact.relationship}</p>
-              <p className="text-base font-mono font-semibold text-red-600 mt-3">{patient.emergencyContact.phone}</p>
-            </div>
-          )}
         </div>
 
-        {/* CRITICAL ALERT - Only if severe allergies */}
+        {/* ═══════════════════════════════════════════════════════════
+            SECTION 2: CRITICAL ALERTS
+            ═══════════════════════════════════════════════════════════ */}
         {severeAllergies.length > 0 && (
           <div className="mb-8">
             <div className="emergency-alert">
               <div className="flex items-start gap-3 mb-4">
-                <AlertTriangle size={20} className="text-red-700 flex-shrink-0 mt-0.5" />
-                <p className="emergency-alert-title mb-0">Severe Allergies Present</p>
+                <AlertTriangle size={22} className="text-red-700 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="emergency-alert-title mb-0">Severe Allergies Present</p>
+                  <p className="text-sm text-red-700 mt-1 font-medium">Immediate medical attention required if exposed</p>
+                </div>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {severeAllergies.map((a) => (
-                  <div key={a.id} className="bg-white/60 p-3 rounded border border-red-200">
+                  <div key={a.id} className="bg-white/70 p-3 rounded border border-red-300">
                     <p className="font-semibold text-slate-900 text-base break-words">{(a as any).allergen}</p>
                     {(a as any).reaction && (
-                      <p className="text-sm text-red-700 mt-2 font-medium">Reaction: {(a as any).reaction}</p>
+                      <p className="text-sm text-red-800 mt-1 font-medium">→ {(a as any).reaction}</p>
                     )}
                   </div>
                 ))}
@@ -225,21 +253,149 @@ ${conditions.length === 0 ? "None" : conditions.map((c) => `• ${(c as any).nam
           </div>
         )}
 
+        {/* Profile Allergies from Patient data */}
+        {patient.allergies && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <AlertTriangle size={18} className="text-red-600" />
+              <p className="section-header mb-0">Documented Allergies</p>
+            </div>
+            <div className="card border-l-4 border-l-red-500 bg-white rounded-lg p-5 sm:p-6 whitespace-pre-wrap text-sm text-slate-700">
+              {patient.allergies}
+            </div>
+          </div>
+        )}
+
+        {/* Profile Medications from Patient data */}
+        {patient.currentMedications && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Pill size={18} className="text-blue-600" />
+              <p className="section-header mb-0">Current Medications</p>
+            </div>
+            <div className="card border-l-4 border-l-blue-500 bg-white rounded-lg p-5 sm:p-6 whitespace-pre-wrap text-sm text-slate-700">
+              {patient.currentMedications}
+            </div>
+          </div>
+        )}
+
+        {/* Profile Conditions from Patient data */}
+        {patient.currentConditions && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Heart size={18} className="text-emerald-600" />
+              <p className="section-header mb-0">Active Conditions</p>
+            </div>
+            <div className="card border-l-4 border-l-emerald-500 bg-white rounded-lg p-5 sm:p-6 whitespace-pre-wrap text-sm text-slate-700">
+              {patient.currentConditions}
+            </div>
+          </div>
+        )}
+
+        {/* Profile Family History from Patient data */}
+        {patient.majorFamilyHistory && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <FileText size={18} className="text-purple-600" />
+              <p className="section-header mb-0">Major Family History</p>
+            </div>
+            <div className="card border-l-4 border-l-purple-500 bg-white rounded-lg p-5 sm:p-6 whitespace-pre-wrap text-sm text-slate-700">
+              {patient.majorFamilyHistory}
+            </div>
+          </div>
+        )}
+
+        {/* Profile Primary Physician */}
+        {(patient.primaryPhysicianName || patient.primaryPhysicianPhone || patient.primaryClinic || patient.insuranceCompany || patient.insuranceNumber) && (
+          <div className="mb-8">
+            <p className="section-header">Healthcare Provider Information</p>
+            <div className="card bg-white rounded-lg p-5 sm:p-6 space-y-3 text-sm text-slate-700">
+              {(patient.primaryPhysicianName || patient.primaryPhysicianPhone) && (
+                <div>
+                  <p className="section-label">Primary Physician</p>
+                  <p className="text-slate-900">
+                    {patient.primaryPhysicianName && <span>{patient.primaryPhysicianName}</span>}
+                    {patient.primaryPhysicianPhone && <span> • {patient.primaryPhysicianPhone}</span>}
+                  </p>
+                </div>
+              )}
+              {patient.primaryClinic && (
+                <div>
+                  <p className="section-label">Clinic</p>
+                  <p className="text-slate-900">{patient.primaryClinic}</p>
+                </div>
+              )}
+              {(patient.insuranceCompany || patient.insuranceNumber) && (
+                <div>
+                  <p className="section-label">Insurance</p>
+                  <p className="text-slate-900">
+                    {patient.insuranceCompany && <span>{patient.insuranceCompany}</span>}
+                    {patient.insuranceCompany && patient.insuranceNumber && <span> • </span>}
+                    {patient.insuranceNumber && <span>{patient.insuranceNumber}</span>}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Height and Weight from Home Page Card */}
+        {(patient.height || patient.weight) && (
+          <div className="mb-8">
+            <p className="section-header">Physical Measurements</p>
+            <div className="card bg-white rounded-lg p-5 sm:p-6">
+              <div className="grid grid-cols-2 gap-6">
+                {patient.height && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">Height</p>
+                    <p className="text-base text-slate-700 font-medium">{patient.height}</p>
+                  </div>
+                )}
+                {patient.weight && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">Weight</p>
+                    <p className="text-base text-slate-700 font-medium">{patient.weight}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Profile Other Notes */}
+        {patient.importantNotes && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <AlertTriangle size={18} className="text-amber-600" />
+              <p className="section-header mb-0">Other Notes</p>
+            </div>
+            <div className="card border-l-4 border-l-amber-500 bg-white rounded-lg p-5 sm:p-6 whitespace-pre-wrap text-sm text-slate-700">
+              {patient.importantNotes}
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════
+            SECTION 3: MEDICAL RISKS
+            ═══════════════════════════════════════════════════════════ */}
+        
         {/* Allergies */}
         {allergies.length > 0 && (
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
               <AlertTriangle size={18} className="text-red-600" />
-              <p className="section-header mb-0">Allergies</p>
+              <p className="section-header mb-0">All Documented Allergies</p>
             </div>
             <div className="record-item record-item-allergy">
               <div className="space-y-4">
                 {allergies.map((a) => (
                   <div key={a.id} className="pb-4 border-b border-slate-100 last:border-b-0">
-                    <p className="font-semibold text-slate-900 break-words text-base">{(a as any).allergen}</p>
-                    <div className="flex flex-wrap items-center gap-3 mt-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-slate-900 break-words text-base">{(a as any).allergen}</p>
+                      </div>
                       {(a as any).severity && (
-                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap flex-shrink-0 ${
                           (a as any).severity === "severe"
                             ? "bg-red-100 text-red-800"
                             : (a as any).severity === "moderate"
@@ -249,10 +405,10 @@ ${conditions.length === 0 ? "None" : conditions.map((c) => `• ${(c as any).nam
                           {(a as any).severity}
                         </span>
                       )}
-                      {(a as any).reaction && (
-                        <span className="text-xs text-slate-600">Reaction: {(a as any).reaction}</span>
-                      )}
                     </div>
+                    {(a as any).reaction && (
+                      <p className="text-xs text-slate-600 mt-2">Reaction: {(a as any).reaction}</p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -265,16 +421,20 @@ ${conditions.length === 0 ? "None" : conditions.map((c) => `• ${(c as any).nam
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
               <Pill size={18} className="text-blue-600" />
-              <p className="section-header mb-0">Medications</p>
+              <p className="section-header mb-0">Current Medications</p>
             </div>
             <div className="record-item record-item-medication">
               <div className="space-y-4">
                 {medications.map((m) => (
                   <div key={m.id} className="pb-4 border-b border-slate-100 last:border-b-0">
                     <p className="font-semibold text-slate-900 break-words text-base">{(m as any).name}</p>
-                    <p className="text-sm text-slate-700 mt-2 font-medium">{(m as any).dosage} • {(m as any).frequency}</p>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mt-2 text-sm">
+                      <span className="text-slate-700 font-medium">{(m as any).dosage}</span>
+                      <span className="hidden sm:block text-slate-300">•</span>
+                      <span className="text-slate-600">{(m as any).frequency}</span>
+                    </div>
                     {(m as any).indication && (
-                      <p className="text-xs text-slate-600 mt-2">Reason: {(m as any).indication}</p>
+                      <p className="text-xs text-slate-600 mt-2 bg-slate-50 p-2 rounded">Reason: {(m as any).indication}</p>
                     )}
                   </div>
                 ))}
@@ -288,14 +448,27 @@ ${conditions.length === 0 ? "None" : conditions.map((c) => `• ${(c as any).nam
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
               <Heart size={18} className="text-emerald-600" />
-              <p className="section-header mb-0">Health Conditions</p>
+              <p className="section-header mb-0">Active Health Conditions</p>
             </div>
             <div className="record-item record-item-condition">
               <div className="space-y-4">
                 {conditions.map((c) => (
                   <div key={c.id} className="pb-4 border-b border-slate-100 last:border-b-0">
                     <p className="font-semibold text-slate-900 break-words text-base">{(c as any).name}</p>
-                    <p className="text-xs text-slate-600 mt-2 font-medium">Status: {(c as any).status}</p>
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                        (c as any).status === "active"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : (c as any).status === "chronic"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-slate-100 text-slate-800"
+                      }`}>
+                        {(c as any).status}
+                      </span>
+                      {(c as any).onsetDate && (
+                        <span className="text-xs text-slate-500">Since {new Date((c as any).onsetDate).toLocaleDateString()}</span>
+                      )}
+                    </div>
                     {(c as any).notes && (
                       <p className="text-xs text-slate-600 mt-2 bg-slate-50 p-2 rounded">{(c as any).notes}</p>
                     )}
@@ -306,7 +479,16 @@ ${conditions.length === 0 ? "None" : conditions.map((c) => `• ${(c as any).nam
           </div>
         )}
 
-        {/* Actions */}
+        {/* No Medical Records Alert */}
+        {allergies.length === 0 && medications.length === 0 && conditions.length === 0 && (
+          <div className="mb-8 p-4 bg-slate-50 border border-slate-200 rounded-lg text-center">
+            <p className="text-sm text-slate-600">No medical records added yet. Add allergies, medications, and conditions to complete your health profile.</p>
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════
+            SECTION 5: ACTIONS
+            ═══════════════════════════════════════════════════════════ */}
         <div className="action-group mt-8">
           <button
             onClick={handleCreateEmergencyShare}

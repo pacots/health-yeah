@@ -5,11 +5,32 @@ export type Patient = {
   name: string;
   dateOfBirth: string; // ISO date (YYYY-MM-DD)
   preferredLanguage: string;
+  
+  // Medical Information
+  bloodType?: string; // e.g., "O+", "B-"
+  
+  // Emergency Contact
   emergencyContact: {
     name: string;
     relationship: string;
     phone: string;
   };
+  
+  // Emergency Health Card Fields
+  allergies?: string; // Comma-separated or formatted list
+  currentMedications?: string; // Comma-separated or formatted list
+  currentConditions?: string; // Comma-separated or formatted list
+  majorFamilyHistory?: string; // Text field for family medical history
+  primaryPhysicianName?: string; // Physician name
+  primaryPhysicianPhone?: string; // Physician phone number
+  primaryClinic?: string; // Clinic name and/or location
+  insuranceCompany?: string; // Insurance company name
+  insuranceNumber?: string; // Insurance policy number
+  height?: string; // e.g., "5'10\" or "178 cm"
+  weight?: string; // e.g., "180 lbs" or "82 kg"
+  importantNotes?: string; // Special considerations, alerts, etc.
+  
+  // Metadata
   createdAt: number;
   updatedAt: number;
 };
