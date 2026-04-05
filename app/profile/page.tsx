@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useApp } from "@/lib/context";
 import Link from "next/link";
 import { ConfirmDialog } from "@/lib/ConfirmDialog";
@@ -10,8 +10,10 @@ import { buildWalletExport, downloadWalletExport, parseWalletExportFile, walletF
 
 export default function ProfilePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const app = useApp();
-  const { patient, updatePatient } = app;
+  const { patient, updatePatient, createEmptyWallet } = app;
+  const isCreatingProfile = !patient;
   const [loading, setLoading] = useState(false);
   const [backupLoading, setBackupLoading] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -19,6 +21,7 @@ export default function ProfilePage() {
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
   const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const [requiresReplaceConfirm, setRequiresReplaceConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [formData, setFormData] = useState({
@@ -63,13 +66,22 @@ export default function ProfilePage() {
     });
   }, [patient]);
 
-  if (!patient) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600">Loading...</p>
-      </div>
-    );
-  }
+  useEffect(() => {
+    const initializeCreateMode = async () => {
+      if (!searchParams.get("new") || patient) {
+        return;
+      }
+
+      const existingWallet = await storage.getWallet();
+      if (!existingWallet) {
+        await createEmptyWallet();
+      }
+    };
+
+    initializeCreateMode().catch((error) => {
+      console.error("Failed to initialize empty wallet for profile creation:", error);
+    });
+  }, [searchParams, patient, createEmptyWallet]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -81,8 +93,13 @@ export default function ProfilePage() {
     setLoading(true);
 
     try {
+      const now = Date.now();
       await updatePatient({
-        ...patient,
+        ...(patient || {
+          id: Math.random().toString(36).substring(2, 11),
+          createdAt: now,
+          updatedAt: now,
+        }),
         name: formData.name,
         dateOfBirth: formData.dateOfBirth,
         preferredLanguage: formData.preferredLanguage,
@@ -113,17 +130,13 @@ export default function ProfilePage() {
     setImportSuccess(null);
     setBackupLoading(true);
     try {
-      if (typeof app.exportWalletBackup === "function") {
-        await app.exportWalletBackup();
-      } else {
-        // Fallback path if runtime context is stale during HMR.
-        const wallet = await storage.getWallet();
-        if (!wallet) {
-          throw new Error("No wallet data available to export.");
-        }
-        const payload = buildWalletExport(wallet);
-        downloadWalletExport(payload);
+      const wallet = await storage.getWallet();
+      if (!wallet || !wallet.patient) {
+        throw new Error("No wallet data available to export.");
       }
+
+      const payload = buildWalletExport(wallet);
+      downloadWalletExport(payload);
       setImportSuccess("Wallet exported successfully.");
     } catch (error) {
       setImportError(error instanceof Error ? error.message : "Failed to export wallet.");
@@ -144,43 +157,55 @@ export default function ProfilePage() {
 
     if (!file) return;
 
-    setPendingImportFile(file);
-    setShowImportConfirm(true);
+    const checkAndConfirm = async () => {
+      const existingWallet = await storage.getWallet();
+      if (!existingWallet) {
+        setPendingImportFile(file);
+        setRequiresReplaceConfirm(false);
+        await handleConfirmImport(file);
+        return;
+      }
+
+      setRequiresReplaceConfirm(true);
+      setPendingImportFile(file);
+      setShowImportConfirm(true);
+    };
+
+    checkAndConfirm().catch((error) => {
+      setImportError(error instanceof Error ? error.message : "Failed to prepare import.");
+    });
   };
 
-  const handleConfirmImport = async () => {
-    if (!pendingImportFile) return;
+  const handleConfirmImport = async (fileOverride?: File) => {
+    const importFile = fileOverride || pendingImportFile;
+    if (!importFile) return;
 
+    setPendingImportFile(importFile);
     setShowImportConfirm(false);
     setImporting(true);
     setImportError(null);
     setImportSuccess(null);
 
     try {
-      if (typeof app.importWalletBackup === "function") {
-        await app.importWalletBackup(pendingImportFile);
-      } else {
-        // Fallback path if runtime context is stale during HMR.
-        const parsedExport = await parseWalletExportFile(pendingImportFile);
-        const importedWallet = walletFromExport(parsedExport);
-        const previousWallet = await storage.getWallet();
+      const parsedExport = await parseWalletExportFile(importFile);
+      const importedWallet = walletFromExport(parsedExport);
+      const previousWallet = await storage.getWallet();
 
-        await storage.clear();
+      await storage.clear();
 
-        try {
-          await storage.setWallet(importedWallet);
-        } catch (error) {
-          if (previousWallet) {
-            await storage.setWallet(previousWallet);
-          }
-          throw error;
+      try {
+        await storage.setWallet(importedWallet);
+      } catch (error) {
+        if (previousWallet) {
+          await storage.setWallet(previousWallet);
         }
+        throw error;
       }
 
       setImportSuccess("Wallet imported successfully. Redirecting to dashboard...");
       setPendingImportFile(null);
+      setRequiresReplaceConfirm(false);
       setTimeout(() => {
-        // Force refresh so app state rehydrates from restored local wallet.
         window.location.href = "/";
       }, 700);
     } catch (error) {
@@ -193,12 +218,11 @@ export default function ProfilePage() {
   return (
     <div className="page-container">
       <div className="page-max-width">
-        {/* Header */}
         <div className="page-header">
           <Link href="/" className="back-link">
-            ← Back to Dashboard
+            {"<- Back to Dashboard"}
           </Link>
-          <h1 className="page-title">Patient Profile</h1>
+          <h1 className="page-title">{isCreatingProfile ? "Create Profile" : "Patient Profile"}</h1>
         </div>
 
         <div className="card mb-6">
@@ -242,44 +266,23 @@ export default function ProfilePage() {
           />
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="card">
-          {/* Personal Information Section */}
           <div className="mb-8">
             <h2 className="text-xl font-bold text-gray-900 mb-6">Personal Information</h2>
 
             <div className="form-group">
               <label className="label">Full Name</label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                className="input"
-                required
-              />
+              <input type="text" name="name" value={formData.name} onChange={handleChange} className="input" required />
             </div>
 
             <div className="form-group">
               <label className="label">Date of Birth</label>
-              <input
-                type="date"
-                name="dateOfBirth"
-                value={formData.dateOfBirth}
-                onChange={handleChange}
-                className="input"
-                required
-              />
+              <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="input" required />
             </div>
 
             <div className="form-group">
               <label className="label">Blood Type</label>
-              <select
-                name="bloodType"
-                value={formData.bloodType}
-                onChange={handleChange}
-                className="input"
-              >
+              <select name="bloodType" value={formData.bloodType} onChange={handleChange} className="input">
                 <option value="">-- Not specified --</option>
                 <option value="O+">O+</option>
                 <option value="O-">O-</option>
@@ -294,12 +297,7 @@ export default function ProfilePage() {
 
             <div className="form-group">
               <label className="label">Preferred Language</label>
-              <select
-                name="preferredLanguage"
-                value={formData.preferredLanguage}
-                onChange={handleChange}
-                className="input"
-              >
+              <select name="preferredLanguage" value={formData.preferredLanguage} onChange={handleChange} className="input">
                 <option value="en">English</option>
                 <option value="es">Spanish</option>
                 <option value="fr">French</option>
@@ -310,171 +308,82 @@ export default function ProfilePage() {
 
           <div className="border-t border-gray-200 my-8"></div>
 
-          {/* Emergency Contact Section */}
           <div className="mb-8">
             <h2 className="text-xl font-bold text-gray-900 mb-6">Emergency Contact</h2>
 
             <div className="form-group">
               <label className="label">Name</label>
-              <input
-                type="text"
-                name="emergencyContactName"
-                value={formData.emergencyContactName}
-                onChange={handleChange}
-                className="input"
-              />
+              <input type="text" name="emergencyContactName" value={formData.emergencyContactName} onChange={handleChange} className="input" />
             </div>
 
             <div className="form-group">
               <label className="label">Relationship</label>
-              <input
-                type="text"
-                name="emergencyContactRelationship"
-                value={formData.emergencyContactRelationship}
-                onChange={handleChange}
-                placeholder="e.g., Spouse, Parent, Adult Child"
-                className="input"
-              />
+              <input type="text" name="emergencyContactRelationship" value={formData.emergencyContactRelationship} onChange={handleChange} placeholder="e.g., Spouse, Parent, Adult Child" className="input" />
             </div>
 
             <div className="form-group">
               <label className="label">Phone Number</label>
-              <input
-                type="tel"
-                name="emergencyContactPhone"
-                value={formData.emergencyContactPhone}
-                onChange={handleChange}
-                className="input"
-              />
+              <input type="tel" name="emergencyContactPhone" value={formData.emergencyContactPhone} onChange={handleChange} className="input" />
             </div>
           </div>
 
           <div className="border-t border-gray-200 my-8"></div>
 
-          {/* Medical Information Section */}
           <div className="mb-8">
             <h2 className="text-xl font-bold text-gray-900 mb-6">Medical Information</h2>
 
             <div className="form-group">
               <label className="label">Height</label>
-              <input
-                type="text"
-                name="height"
-                value={formData.height}
-                onChange={handleChange}
-                placeholder="e.g., 5'10 or 178 cm"
-                className="input"
-              />
+              <input type="text" name="height" value={formData.height} onChange={handleChange} placeholder="e.g., 5'10 or 178 cm" className="input" />
             </div>
 
             <div className="form-group">
               <label className="label">Weight</label>
-              <input
-                type="text"
-                name="weight"
-                value={formData.weight}
-                onChange={handleChange}
-                placeholder="e.g., 180 lbs or 82 kg"
-                className="input"
-              />
+              <input type="text" name="weight" value={formData.weight} onChange={handleChange} placeholder="e.g., 180 lbs or 82 kg" className="input" />
             </div>
 
             <div className="form-group">
               <label className="label">Major Family History</label>
-              <textarea
-                name="majorFamilyHistory"
-                value={formData.majorFamilyHistory}
-                onChange={handleChange}
-                placeholder="e.g., Father - Diabetes, Mother - Heart disease"
-                className="input"
-                rows={3}
-              />
+              <textarea name="majorFamilyHistory" value={formData.majorFamilyHistory} onChange={handleChange} placeholder="e.g., Father - Diabetes, Mother - Heart disease" className="input" rows={3} />
               <p className="text-xs text-gray-500 mt-2">Include significant family medical history</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="form-group">
                 <label className="label">Primary Physician</label>
-                <input
-                  type="text"
-                  name="primaryPhysicianName"
-                  value={formData.primaryPhysicianName}
-                  onChange={handleChange}
-                  placeholder="e.g., Dr. Emily Rodriguez, MD"
-                  className="input"
-                />
+                <input type="text" name="primaryPhysicianName" value={formData.primaryPhysicianName} onChange={handleChange} placeholder="e.g., Dr. Emily Rodriguez, MD" className="input" />
               </div>
               <div className="form-group">
                 <label className="label">Physician Phone</label>
-                <input
-                  type="tel"
-                  name="primaryPhysicianPhone"
-                  value={formData.primaryPhysicianPhone}
-                  onChange={handleChange}
-                  placeholder="e.g., +1-555-0100"
-                  className="input"
-                />
+                <input type="tel" name="primaryPhysicianPhone" value={formData.primaryPhysicianPhone} onChange={handleChange} placeholder="e.g., +1-555-0100" className="input" />
               </div>
             </div>
 
             <div className="form-group">
               <label className="label">Clinic</label>
-              <input
-                type="text"
-                name="primaryClinic"
-                value={formData.primaryClinic}
-                onChange={handleChange}
-                placeholder="e.g., City Medical Center"
-                className="input"
-              />
+              <input type="text" name="primaryClinic" value={formData.primaryClinic} onChange={handleChange} placeholder="e.g., City Medical Center" className="input" />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="form-group">
                 <label className="label">Insurance Company</label>
-                <input
-                  type="text"
-                  name="insuranceCompany"
-                  value={formData.insuranceCompany}
-                  onChange={handleChange}
-                  placeholder="e.g., Blue Cross Blue Shield"
-                  className="input"
-                />
+                <input type="text" name="insuranceCompany" value={formData.insuranceCompany} onChange={handleChange} placeholder="e.g., Blue Cross Blue Shield" className="input" />
               </div>
               <div className="form-group">
                 <label className="label">Insurance Number</label>
-                <input
-                  type="text"
-                  name="insuranceNumber"
-                  value={formData.insuranceNumber}
-                  onChange={handleChange}
-                  placeholder="e.g., #12345678"
-                  className="input"
-                />
+                <input type="text" name="insuranceNumber" value={formData.insuranceNumber} onChange={handleChange} placeholder="e.g., #12345678" className="input" />
               </div>
             </div>
 
             <div className="form-group">
               <label className="label">Other Notes</label>
-              <textarea
-                name="importantNotes"
-                value={formData.importantNotes}
-                onChange={handleChange}
-                placeholder="e.g., Pregnancy status, smoking habits, drug use, eating habits, activity level"
-                className="input"
-                rows={3}
-              />
+              <textarea name="importantNotes" value={formData.importantNotes} onChange={handleChange} placeholder="e.g., Pregnancy status, smoking habits, drug use, eating habits, activity level" className="input" rows={3} />
               <p className="text-xs text-gray-500 mt-2">Lifestyle and personal health information</p>
             </div>
           </div>
 
-          {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200">
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary flex-1"
-            >
+            <button type="submit" disabled={loading} className="btn-primary flex-1">
               {loading ? "Saving..." : "Save Profile"}
             </button>
             <Link href="/" className="btn-secondary flex-1 text-center">
@@ -486,19 +395,25 @@ export default function ProfilePage() {
         <ConfirmDialog
           isOpen={showImportConfirm}
           title="Replace Wallet On This Device"
-          message="This will replace your current wallet on this device. This action cannot be undone."
-          confirmLabel="Replace Wallet"
+          message={
+            requiresReplaceConfirm
+              ? "This will replace your current wallet on this device. This action cannot be undone."
+              : "Import this wallet backup on this device?"
+          }
+          confirmLabel={requiresReplaceConfirm ? "Replace Wallet" : "Import Wallet"}
           cancelLabel="Cancel"
-          isDangerous={true}
+          isDangerous={requiresReplaceConfirm}
           isLoading={importing}
           onConfirm={handleConfirmImport}
           onCancel={() => {
             if (importing) return;
             setShowImportConfirm(false);
             setPendingImportFile(null);
+            setRequiresReplaceConfirm(false);
           }}
         />
       </div>
     </div>
   );
 }
+

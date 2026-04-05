@@ -111,6 +111,10 @@ function asConditionRecords(records: unknown): ConditionRecord[] {
 }
 
 export function buildWalletExport(wallet: Wallet): WalletExportV1 {
+  if (!wallet.patient) {
+    throw new Error("Cannot export wallet without a profile.");
+  }
+
   const allergies = wallet.records.filter((r) => r.type === "allergy") as AllergyRecord[];
   const medications = wallet.records.filter((r) => r.type === "medication") as MedicationRecord[];
   const conditions = wallet.records.filter((r) => r.type === "condition") as ConditionRecord[];
@@ -126,6 +130,7 @@ export function buildWalletExport(wallet: Wallet): WalletExportV1 {
       conditions,
       documents: wallet.documents,
       preferences: {
+        ...(wallet.preferences || {}),
         preferredLanguage: wallet.patient.preferredLanguage,
       },
     },
@@ -274,5 +279,6 @@ export function walletFromExport(data: WalletExportV1): Wallet {
     documents: normalizedDocuments,
     // Shares are intentionally not part of backup/restore because sharing is explicit and separate.
     shares: {},
+    preferences: data.wallet.preferences,
   };
 }
