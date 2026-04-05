@@ -161,6 +161,7 @@ export type Share = {
   documentSnapshots?: Document[];
   createdAt: number;
   expiresAt?: number;
+  status?: "active" | "revoked";
 };
 
 // Single wallet object for atomic persistence

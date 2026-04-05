@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useApp } from "@/lib/context";
+import { DEFAULT_SHARE_EXPIRATION_MS, SHARE_EXPIRATION_OPTIONS } from "@/lib/share-expiration";
 
 function formatDateForDisplay(dateString: string): string {
   try {
@@ -44,6 +45,7 @@ export default function EmergencySummaryPage() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [urlCopied, setUrlCopied] = useState(false);
+  const [expirationMs, setExpirationMs] = useState<number>(DEFAULT_SHARE_EXPIRATION_MS);
   const qrRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -175,7 +177,7 @@ ${conditions.length === 0 ? "None" : conditions.map((c) => `• ${(c as any).nam
         ...medications.map((r) => r.id),
       ];
 
-      const share = await createShare("emergency", emergencyRecordIds);
+      const share = await createShare("emergency", emergencyRecordIds, expirationMs);
       setShareCreated(share.id);
 
       // Generate share URL
@@ -532,6 +534,21 @@ ${conditions.length === 0 ? "None" : conditions.map((c) => `• ${(c as any).nam
             SECTION 5: ACTIONS
             ═══════════════════════════════════════════════════════════ */}
         <div className="action-group mt-8">
+          <div className="w-full mb-3">
+            <label htmlFor="emergency-share-expiration" className="label">Link Expiration</label>
+            <select
+              id="emergency-share-expiration"
+              value={expirationMs}
+              onChange={(e) => setExpirationMs(Number(e.target.value))}
+              className="input"
+            >
+              {SHARE_EXPIRATION_OPTIONS.map((option) => (
+                <option key={option.valueMs} value={option.valueMs}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
           <button
             onClick={handleCreateEmergencyShare}
             disabled={sharing}
@@ -594,7 +611,7 @@ ${conditions.length === 0 ? "None" : conditions.map((c) => `• ${(c as any).nam
 
                 {/* Footer Note */}
                 <p className="text-xs text-slate-500 text-center border-t border-slate-200 pt-3">
-                  Share link valid only during this session. Perfect for emergency scenarios and demos.
+                  This link expires automatically after the selected duration.
                 </p>
               </div>
 

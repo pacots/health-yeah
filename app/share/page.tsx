@@ -5,6 +5,7 @@ import { useApp } from "@/lib/context";
 import { Share } from "@/lib/types";
 import Link from "next/link";
 import { ConfirmDialog } from "@/lib/ConfirmDialog";
+import { DEFAULT_SHARE_EXPIRATION_MS, SHARE_EXPIRATION_OPTIONS } from "@/lib/share-expiration";
 
 export default function SharePage() {
   const { records, createShare, getAllShares, deleteShare } = useApp();
@@ -29,7 +30,7 @@ export default function SharePage() {
     setDeleting(true);
     try {
       await deleteShare(deleteConfirm.id);
-      setShares(shares.filter((s) => s.id !== deleteConfirm.id));
+      await loadShares();
     } finally {
       setDeleting(false);
       setDeleteConfirm({ id: "", show: false });
@@ -79,10 +80,10 @@ export default function SharePage() {
           <ShareForm
             records={records}
             onClose={() => setShowForm(false)}
-            onSave={async (scope, selectedRecordIds) => {
+            onSave={async (scope, selectedRecordIds, expirationMs) => {
               setLoading(true);
               try {
-                const newShare = await createShare(scope, selectedRecordIds);
+                const newShare = await createShare(scope, selectedRecordIds, expirationMs);
                 setShares([newShare, ...shares]);
                 setShowForm(false);
               } finally {
@@ -103,6 +104,28 @@ export default function SharePage() {
             <div className="space-y-3">
               {shares.map((share) => (
                 <div key={share.id} className="card">
+                  {(() => {
+                    const isExpired = !!share.expiresAt && share.expiresAt < Date.now();
+                    const status: "active" | "expired" | "revoked" =
+                      share.status === "revoked" ? "revoked" : isExpired ? "expired" : "active";
+
+                    return (
+                      <div className="mb-2">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+                            status === "active"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : status === "expired"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {status === "active" ? "Active" : status === "expired" ? "Expired" : "Revoked"}
+                        </span>
+                      </div>
+                    );
+                  })()}
+
                   <div className="flex flex-col sm:flex-row justify-between items-start gap-3 mb-4">
                     <div className="min-w-0 flex-1">
                       <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-1 break-words">
@@ -111,12 +134,18 @@ export default function SharePage() {
                       <p className="text-xs text-gray-600">
                         Created {new Date(share.createdAt).toLocaleString()}
                       </p>
+                      {share.expiresAt && (
+                        <p className="text-xs text-gray-600 mt-1">
+                          Expires {new Date(share.expiresAt).toLocaleString()}
+                        </p>
+                      )}
                     </div>
                     <button
                       onClick={() => setDeleteConfirm({ id: share.id, show: true })}
                       className="btn-danger btn-sm text-sm whitespace-nowrap flex-shrink-0"
+                      disabled={share.status === "revoked"}
                     >
-                      Revoke
+                      {share.status === "revoked" ? "Revoked" : "Revoke"}
                     </button>
                   </div>
 
@@ -172,10 +201,15 @@ function ShareForm({
 }: {
   records: any[];
   onClose: () => void;
-  onSave: (scope: "emergency" | "continuity", selectedIds: string[]) => Promise<void>;
+  onSave: (
+    scope: "emergency" | "continuity",
+    selectedIds: string[],
+    expirationMs: number
+  ) => Promise<void>;
 }) {
   const [scope, setScope] = useState<"emergency" | "continuity" | null>(null);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
+  const [expirationMs, setExpirationMs] = useState<number>(DEFAULT_SHARE_EXPIRATION_MS);
   const [loading, setLoading] = useState(false);
 
   const handleToggleRecord = (id: string) => {
@@ -204,7 +238,7 @@ function ShareForm({
 
     setLoading(true);
     try {
-      await onSave(scope as "emergency" | "continuity", selectedRecordIds);
+      await onSave(scope as "emergency" | "continuity", selectedRecordIds, expirationMs);
     } finally {
       setLoading(false);
     }
@@ -249,6 +283,23 @@ function ShareForm({
                 <p className="text-xs text-gray-600">All records</p>
               </button>
             </div>
+          </div>
+
+          {/* Expiration Selection */}
+          <div>
+            <label className="label">Link Expiration</label>
+            <select
+              value={expirationMs}
+              onChange={(e) => setExpirationMs(Number(e.target.value))}
+              className="input"
+            >
+              {SHARE_EXPIRATION_OPTIONS.map((option) => (
+                <option key={option.valueMs} value={option.valueMs}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">Links expire automatically after the selected duration.</p>
           </div>
 
           {/* Record Selection */}

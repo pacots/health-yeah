@@ -6,6 +6,7 @@ import { storage, generateShareId } from "./storage";
 import { createRemoteShare, getRemoteShare, revokeRemoteShare } from "./supabase";
 import { buildShareSnapshot } from "./sharing/buildShareSnapshot";
 import { buildWalletExport, downloadWalletExport, parseWalletExportFile, walletFromExport } from "./wallet-transfer";
+import { sanitizeShareExpirationMs } from "./share-expiration";
 
 type AppContextType = {
   // State
@@ -50,7 +51,11 @@ type AppContextType = {
   unlinkDocumentFromCondition: (documentId: string, conditionId: string) => Promise<void>;
 
   // Share actions
-  createShare: (scope: "emergency" | "continuity", selectedRecordIds: string[]) => Promise<Share>;
+  createShare: (
+    scope: "emergency" | "continuity",
+    selectedRecordIds: string[],
+    expirationMs?: number
+  ) => Promise<Share>;
   getShare: (shareId: string) => Promise<Share | null>;
   getAllShares: () => Promise<Share[]>;
   deleteShare: (shareId: string) => Promise<void>;
@@ -104,11 +109,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // Only update state if component is still mounted
         if (!isComponentMounted) return;
 
-        if (wallet?.patient) {
+        if (wallet) {
           console.log("[App] Wallet loaded, setting state...");
           setHasPersistedWallet(true);
           setPatient(wallet.patient);
-          setRecords(wallet.records);
+          setRecords(wallet.records || []);
           // Load documents from wallet (client-side storage)
           // API is only used for document creation/updates, not for loading
           const walletDocs = wallet.documents || [];
@@ -167,6 +172,64 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     await storage.setWallet(wallet);
   };
+
+  const revokeShareEverywhere = async (shareId: string, localShare?: Share | null) => {
+    const revokeResult = await revokeRemoteShare(shareId);
+    if (!revokeResult.ok) {
+      console.warn("[Share] Remote revoke failed", {
+        shareId,
+        error: revokeResult.error,
+      });
+    }
+
+    if (localShare) {
+      await storage.setShare({ ...localShare, status: "revoked" });
+    }
+  };
+
+  const autoRevokeExpiredShares = async () => {
+    const allShares = await storage.getAllShares();
+    const now = Date.now();
+
+    const expiredActiveShares = allShares.filter(
+      (share) =>
+        share.status !== "revoked" &&
+        typeof share.expiresAt === "number" &&
+        share.expiresAt <= now
+    );
+
+    if (expiredActiveShares.length === 0) {
+      return;
+    }
+
+    await Promise.all(
+      expiredActiveShares.map(async (share) => {
+        await revokeShareEverywhere(share.id, share);
+      })
+    );
+  };
+
+  // Keep links trustworthy by revoking expired shares in the background.
+  useEffect(() => {
+    let mounted = true;
+
+    const runAutoRevoke = async () => {
+      if (!mounted) return;
+      try {
+        await autoRevokeExpiredShares();
+      } catch (error) {
+        console.warn("[Share] Auto-revoke pass failed:", error);
+      }
+    };
+
+    runAutoRevoke();
+    const intervalId = setInterval(runAutoRevoke, 60 * 1000);
+
+    return () => {
+      mounted = false;
+      clearInterval(intervalId);
+    };
+  }, []);
 
   const createEmptyWallet = async () => {
     const wallet = await storage.createEmptyWallet();
@@ -559,19 +622,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Share actions
-  const createShare = async (scope: "emergency" | "continuity", selectedRecordIds: string[]) => {
+  const createShare = async (
+    scope: "emergency" | "continuity",
+    selectedRecordIds: string[],
+    expirationMs?: number
+  ) => {
     if (!patient) throw new Error("No patient found");
 
     const selectedRecords = records.filter((r) => selectedRecordIds.includes(r.id));
     const shareId = generateShareId();
+    const safeExpirationMs = sanitizeShareExpirationMs(expirationMs);
+    const expiresAt = Date.now() + safeExpirationMs;
 
     // Build share snapshot with correct payload per scope
     const shareSnapshot = buildShareSnapshot(scope, patient, selectedRecords, documents);
     shareSnapshot.id = shareId;
+    shareSnapshot.expiresAt = expiresAt;
+    shareSnapshot.status = "active";
 
     try {
       // Upload to Supabase first (primary storage for cross-device access)
-      await createRemoteShare(shareId, scope, shareSnapshot);
+      await createRemoteShare(shareId, scope, shareSnapshot, expiresAt);
     } catch (error) {
       console.warn("Failed to create remote share, save will be local-only:", error);
       // Continue: save locally as fallback
@@ -584,7 +655,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const getShare = async (shareId: string) => {
-    // Try remote storage first (Supabase) for cross-device access
+    const localShare = await storage.getShare(shareId);
+
+    if (
+      localShare &&
+      localShare.status !== "revoked" &&
+      typeof localShare.expiresAt === "number" &&
+      localShare.expiresAt <= Date.now()
+    ) {
+      await revokeShareEverywhere(shareId, localShare);
+      return { ...localShare, status: "revoked" as const };
+    }
+
+    // Local status takes precedence so manual revoke/expiry always works on the current device.
+    if (localShare?.status === "revoked") return localShare;
+
+    // Try remote storage next (Supabase) for cross-device access.
     try {
       const remoteShare = await getRemoteShare(shareId);
       if (remoteShare) {
@@ -595,35 +681,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Fall back to local storage (backward compatibility)
-    return storage.getShare(shareId);
+    return localShare ?? null;
   };
 
   const getAllShares = async () => {
+    await autoRevokeExpiredShares();
     return storage.getAllShares();
   };
 
   const deleteShare = async (shareId: string) => {
-    // Revoke remotely (marks as revoked instead of deleting)
-    try {
-      await revokeRemoteShare(shareId);
-    } catch (error) {
-      console.warn("Failed to revoke remote share:", error);
-    }
-
-    // Also delete locally
-    await storage.deleteShare(shareId);
+    const localShare = await storage.getShare(shareId);
+    await revokeShareEverywhere(shareId, localShare);
   };
 
   const revokeShare = async (shareId: string) => {
-    // Revoke remotely (same as deleteShare - marks as revoked)
-    try {
-      await revokeRemoteShare(shareId);
-    } catch (error) {
-      console.warn("Failed to revoke remote share:", error);
-    }
-
-    // Also delete locally
-    await storage.deleteShare(shareId);
+    const localShare = await storage.getShare(shareId);
+    await revokeShareEverywhere(shareId, localShare);
   };
 
   // Reset to true first-run state (no wallet persisted)

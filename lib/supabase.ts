@@ -35,25 +35,44 @@ export type RemoteShare = {
   expires_at: string | null;
 };
 
+export type ShareMutationResult = {
+  ok: boolean;
+  error?: string;
+  skipped?: boolean;
+};
+
 /**
  * Create and store a share snapshot remotely
  */
 export async function createRemoteShare(
   shareId: string,
   scope: "emergency" | "continuity",
-  snapshot: any
+  snapshot: any,
+  expiresAt: number
 ): Promise<void> {
   if (!supabase) {
     throw new Error("Supabase client not initialized");
   }
 
-  const { error } = await supabase.from("shared_snapshots").insert({
-    id: shareId,
-    scope,
-    snapshot,
-    status: "active",
-    expires_at: null,
+  console.log("[Share] createRemoteShare expiration value", {
+    shareId,
+    expiresAt,
+    expiresAtIso: new Date(expiresAt).toISOString(),
   });
+
+  const { data, error } = await supabase
+    .from("shared_snapshots")
+    .insert({
+      id: shareId,
+      scope,
+      snapshot,
+      status: "active",
+      expires_at: new Date(expiresAt).toISOString(),
+    })
+    .select("id, status, expires_at")
+    .single();
+
+  console.log("[Share] createRemoteShare insert result", { data, error });
 
   if (error) {
     console.error("Failed to create remote share:", error);
@@ -90,20 +109,22 @@ export async function getRemoteShare(shareId: string): Promise<any | null> {
     return null;
   }
 
+  const remoteShare = data as RemoteShare;
+
   // Check if revoked
-  if ((data as RemoteShare).status === "revoked") {
+  if (remoteShare.status === "revoked") {
     return null;
   }
 
   // Check if expired
-  if ((data as RemoteShare).expires_at) {
-    const expiresAt = new Date((data as RemoteShare).expires_at!).getTime();
+  if (remoteShare.expires_at) {
+    const expiresAt = new Date(remoteShare.expires_at).getTime();
     if (expiresAt < Date.now()) {
       return null;
     }
   }
 
-  return (data as RemoteShare).snapshot;
+  return remoteShare.snapshot;
 }
 
 /**
@@ -146,9 +167,14 @@ export async function getRemoteShareStatus(
 /**
  * Revoke a share (mark as revoked in remote storage)
  */
-export async function revokeRemoteShare(shareId: string): Promise<void> {
+export async function revokeRemoteShare(shareId: string): Promise<ShareMutationResult> {
   if (!supabase) {
-    throw new Error("Supabase client not initialized");
+    const response: ShareMutationResult = {
+      ok: true,
+      skipped: true,
+    };
+    console.log("[Share] revoke response", { shareId, response });
+    return response;
   }
 
   const { error } = await supabase
@@ -156,8 +182,21 @@ export async function revokeRemoteShare(shareId: string): Promise<void> {
     .update({ status: "revoked" })
     .eq("id", shareId);
 
+  console.log("[Share] revoke response", { shareId, error });
+
   if (error) {
-    console.error("Failed to revoke remote share:", error);
-    throw error;
+    const normalizedError =
+      (error as any)?.message ||
+      (error as any)?.details ||
+      JSON.stringify(error);
+
+    return {
+      ok: false,
+      error: normalizedError,
+    };
   }
+
+  return {
+    ok: true,
+  };
 }

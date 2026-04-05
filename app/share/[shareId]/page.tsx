@@ -17,8 +17,7 @@ export default function ProviderViewPage({ params }: { params: Promise<{ shareId
   const [status, setStatus] = useState<ShareStatus>("notfound");
 
   useEffect(() => {
-    // Define functions inside effect to avoid stale closures
-    const loadShare = async () => {
+    const evaluateShare = async (initialLoad = false) => {
       try {
         // Check remote status first
         const remoteStatus = await getRemoteShareStatus(shareId);
@@ -35,15 +34,21 @@ export default function ProviderViewPage({ params }: { params: Promise<{ shareId
           return;
         }
 
-        if (remoteStatus === "notfound") {
-          setStatus("notfound");
-          setShare(null);
-          return;
-        }
-
-        // Status is "active", fetch the share
+        // Fetch snapshot (remote when available, local fallback otherwise)
         const fetchedShare = await getShare(shareId);
         if (fetchedShare) {
+          if (fetchedShare.status === "revoked") {
+            setStatus("revoked");
+            setShare(null);
+            return;
+          }
+
+          if (fetchedShare.expiresAt && fetchedShare.expiresAt < Date.now()) {
+            setStatus("expired");
+            setShare(null);
+            return;
+          }
+
           setShare(fetchedShare);
           setStatus("active");
         } else {
@@ -51,33 +56,30 @@ export default function ProviderViewPage({ params }: { params: Promise<{ shareId
           setShare(null);
         }
       } catch (error) {
-        console.error("Error loading share:", error);
-        setStatus("notfound");
-        setShare(null);
+        // During polling, keep current view on transient failures (network/offline) to avoid flicker.
+        if (initialLoad) {
+          console.error("Error loading share:", error);
+          setStatus("notfound");
+          setShare(null);
+        } else {
+          console.warn("Error checking share status:", error);
+        }
       } finally {
-        setLoading(false);
+        if (initialLoad) {
+          setLoading(false);
+        }
       }
     };
 
-    loadShare();
+    evaluateShare(true);
 
-    // Poll every 5 seconds to check if share status changed (revoked/expired)
+    // Poll every 3 seconds so revoked/expired links invalidate quickly without reload.
     const pollInterval = setInterval(async () => {
-      try {
-        const remoteStatus = await getRemoteShareStatus(shareId);
-        if (remoteStatus !== status) {
-          setStatus(remoteStatus);
-          if (remoteStatus !== "active") {
-            setShare(null);
-          }
-        }
-      } catch (error) {
-        console.error("Error checking share status:", error);
-      }
-    }, 5000);
+      await evaluateShare(false);
+    }, 3000);
 
     return () => clearInterval(pollInterval);
-  }, [shareId, getShare, status]);
+  }, [shareId, getShare]);
 
   if (loading) {
     return (
