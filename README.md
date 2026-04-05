@@ -9,7 +9,7 @@ A **local-first, patient-controlled health wallet** for managing and sharing ess
 ✅ **Documents** — Paste and store medical documents  
 ✅ **Emergency Summary** — One-click access to critical health info  
 ✅ **Health Sharing** — Share limited snapshots with providers  
-✅ **Local-First** — All data stored on device, no backend required  
+✅ **Local-First** — Wallet data stored on device by default  
 ✅ **First-Run Onboarding** — Start from scratch or import an existing wallet  
 
 ## Quick Start
@@ -41,7 +41,19 @@ npm start
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
 - **Storage**: IndexedDB (via localforage)
+- **Optional Remote Sharing**: Supabase (for cross-device share links)
 - **State**: React Context
+
+## Environment Variables
+
+Optional for remote sharing:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+```
+
+If these are not set, the app still works locally and share links are limited to local storage behavior.
 
 ## How to Use
 
@@ -54,11 +66,11 @@ npm start
 
 ## Sharing (MVP Explanation)
 
-⚠️ **Note**: In this MVP, sharing is a **local-session prototype**:
-- Create a share → data stored locally + generates a share ID
-- Share ID is used to create a URL like `/share/abc123`
-- Open on **same device** to view the shared record
-- Works well on a single browser/device; production would use a backend API
+Sharing supports two modes:
+- **With Supabase configured**: share snapshots are stored remotely and accessible across devices via `/share/{id}`.
+- **Without Supabase configured**: local fallback behavior applies, primarily useful for same-browser testing.
+
+Each share is a snapshot and can be revoked.
 
 ## First-Run Behavior
 
@@ -71,13 +83,12 @@ No demo profile or seeded records are created automatically.
 ## Data Privacy
 
 ✅ All data stays on your device
-✅ No external API calls
-✅ No cloud upload
+✅ Remote storage is optional and only used for sharing snapshots
 ✅ Browser provides isolation (future: add encryption)
 
 ## Future Enhancements
 
-- Real backend for cross-device sharing
+- Stronger encryption for local wallet backups
 - End-to-end encryption with PIN lock
 - File upload for documents
 - OCR for document scanning
@@ -88,9 +99,10 @@ No demo profile or seeded records are created automatically.
 ## Development Notes
 
 - Wallet data persists in browser storage until cleared by the user
-- Share snapshots stored in IndexedDB (same device only)
+- Empty-wallet first run is the default (no demo data seeding)
+- IndexedDB operations include timeout/fallback handling to avoid startup hangs
 - No authentication (single-user device model)
-- Minimal dependencies (localforage only extra library)
+- Remote sharing requires valid Supabase credentials
 
 ## License
 MIT
