@@ -2,6 +2,10 @@
 
 A **local-first, patient-controlled health wallet** for managing and sharing essential medical information.
 
+## Live App
+
+Production version: https://healthyeah.vercel.app/
+
 ## Features
 
 ✅ **Patient Profile** — Full name, DOB, emergency contact  
@@ -63,6 +67,41 @@ If these are not set, the app still works locally and share links are limited to
 4. **Documents** — Add medical documents (text paste)
 5. **Emergency Summary** — View critical info, copy to clipboard
 6. **Share** — Generate and manage shared health snapshots
+
+## Easy User Tutorial
+
+Use this quick walkthrough if this is your first time using Health Wallet:
+
+1. **Open the app**
+	- Go to https://healthyeah.vercel.app/
+	- On first use, choose **Create New Profile** or **Import Profile**
+
+2. **Create your profile**
+	- Add your name, date of birth, emergency contact, and optional details like blood type
+	- Tap **Save Profile**
+
+3. **Add your medical records**
+	- Open **Allergies**, **Medications**, and **Conditions** from the home dashboard
+	- Add entries one by one and keep them updated
+
+4. **Store important documents**
+	- Go to **Documents**
+	- Add medical notes/reports so they are available with your wallet
+
+5. **Use Emergency Health Card**
+	- From home, open **Emergency Health Card**
+	- Review key information quickly
+	- Copy the summary when needed
+
+6. **Share with a provider or family member**
+	- Go to **Share** and create a share snapshot
+	- Send the generated link
+	- Revoke access later if needed
+
+7. **Back up your wallet**
+	- Open **Profile**
+	- Use **Export Wallet** to save a backup file
+	- Use **Import Wallet** to restore on another browser/device
 
 ## Sharing (MVP Explanation)
 
