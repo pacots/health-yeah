@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { ChevronDown, ChevronRight, Paperclip, Plus, X } from "lucide-react";
 import { ConditionRecord, Document } from "@/lib/types";
 import { useApp } from "@/lib/context";
 import { SourceBadge, LastUpdated } from "@/lib/metadata-badges";
@@ -22,12 +23,6 @@ export function ConditionCard({ condition, linkedDocuments, onDelete }: Conditio
     (d) => !linkedDocuments.find((ld) => ld.id === d.id)
   );
 
-  const handleLinkDocument = async (documentId: string) => {
-    // TODO: Implement linking - this could be done in context or here
-    // For now, just close the picker
-    setLinkingDocumentId(null);
-  };
-
   const handleUnlinkDocument = async (documentId: string) => {
     try {
       await unlinkDocumentFromCondition(documentId, condition.id);
@@ -48,7 +43,6 @@ export function ConditionCard({ condition, linkedDocuments, onDelete }: Conditio
 
   return (
     <div className="record-list-item record-item-condition border-2 border-transparent hover:border-blue-200 transition-colors">
-      {/* Collapsed Header - Always Visible */}
       <div
         role="button"
         tabIndex={0}
@@ -65,7 +59,11 @@ export function ConditionCard({ condition, linkedDocuments, onDelete }: Conditio
           <div className="flex-1 cursor-pointer">
             <div className="flex items-center gap-2">
               <h3 className="record-list-item-title">{condition.name}</h3>
-              <span className="text-lg text-gray-400">{isExpanded ? "▼" : "▶"}</span>
+              {isExpanded ? (
+                <ChevronDown size={18} className="text-gray-400" />
+              ) : (
+                <ChevronRight size={18} className="text-gray-400" />
+              )}
             </div>
 
             <div className="flex items-center gap-2 mt-3 mb-2">
@@ -75,8 +73,8 @@ export function ConditionCard({ condition, linkedDocuments, onDelete }: Conditio
                   condition.status === "active"
                     ? "text-orange-700"
                     : condition.status === "chronic"
-                    ? "text-rose-700"
-                    : "text-emerald-700"
+                      ? "text-rose-700"
+                      : "text-emerald-700"
                 }`}
               >
                 {condition.status}
@@ -99,8 +97,9 @@ export function ConditionCard({ condition, linkedDocuments, onDelete }: Conditio
               <SourceBadge source={condition.source} />
               <LastUpdated timestamp={condition.updatedAt} />
               {linkedDocuments.length > 0 && (
-                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                  📎 {linkedDocuments.length} document{linkedDocuments.length !== 1 ? "s" : ""}
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded inline-flex items-center gap-1.5">
+                  <Paperclip size={12} />
+                  <span>{linkedDocuments.length} document{linkedDocuments.length !== 1 ? "s" : ""}</span>
                 </span>
               )}
             </div>
@@ -118,10 +117,8 @@ export function ConditionCard({ condition, linkedDocuments, onDelete }: Conditio
         </div>
       </div>
 
-      {/* Expanded Content */}
       {isExpanded && (
         <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
-          {/* Progress Summary */}
           <div>
             <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wider mb-2">
               Progress Summary
@@ -135,7 +132,6 @@ export function ConditionCard({ condition, linkedDocuments, onDelete }: Conditio
             )}
           </div>
 
-          {/* Linked Documents */}
           <div>
             <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wider mb-2">
               Linked Documents ({linkedDocuments.length})
@@ -164,14 +160,13 @@ export function ConditionCard({ condition, linkedDocuments, onDelete }: Conditio
                       className="flex-shrink-0 px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
                       title="Unlink document"
                     >
-                      ✕
+                      <X size={14} />
                     </button>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Link Document Picker */}
             {linkingDocumentId ? (
               <div className="space-y-2 p-3 bg-blue-50 rounded border border-blue-200">
                 <p className="text-xs font-medium text-blue-700">Linking document...</p>
@@ -187,14 +182,14 @@ export function ConditionCard({ condition, linkedDocuments, onDelete }: Conditio
             ) : availableDocuments.length > 0 ? (
               <button
                 onClick={() => setLinkingDocumentId("picking")}
-                className="text-sm px-3 py-2 bg-blue-100 text-blue-700 font-medium rounded hover:bg-blue-200 transition-colors"
+                className="text-sm px-3 py-2 bg-blue-100 text-blue-700 font-medium rounded hover:bg-blue-200 transition-colors inline-flex items-center gap-2"
               >
-                + Link Document
+                <Plus size={16} />
+                <span>Link Document</span>
               </button>
             ) : null}
           </div>
 
-          {/* Full Details */}
           <div className="pt-2 border-t border-gray-200">
             <dl className="space-y-2 text-sm">
               {condition.onsetDate && (
@@ -216,7 +211,6 @@ export function ConditionCard({ condition, linkedDocuments, onDelete }: Conditio
         </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg max-w-sm w-full p-6">

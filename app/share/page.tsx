@@ -6,6 +6,7 @@ import { Share } from "@/lib/types";
 import Link from "next/link";
 import { ConfirmDialog } from "@/lib/ConfirmDialog";
 import { DEFAULT_SHARE_EXPIRATION_MS, SHARE_EXPIRATION_OPTIONS } from "@/lib/share-expiration";
+import { Check, ClipboardList, Copy, Plus, ShieldAlert } from "lucide-react";
 
 export default function SharePage() {
   const { records, documents, createShare, getAllShares, deleteShare } = useApp();
@@ -70,8 +71,12 @@ export default function SharePage() {
             </Link>
             <h1 className="page-title">Share Health Record</h1>
           </div>
-          <button onClick={() => setShowForm(true)} className="btn-primary btn-sm whitespace-nowrap flex-shrink-0">
-            + Generate Share
+          <button
+            onClick={() => setShowForm(true)}
+            className="btn-primary btn-sm whitespace-nowrap flex-shrink-0 inline-flex items-center gap-2"
+          >
+            <Plus size={16} />
+            <span>Generate Share</span>
           </button>
         </div>
 
@@ -160,13 +165,14 @@ export default function SharePage() {
                   <div className="flex flex-col sm:flex-row gap-2">
                     <button
                       onClick={() => handleCopyLink(share.id)}
-                      className={`btn-secondary flex-1 text-sm transition ${
+                      className={`btn-secondary flex-1 text-sm transition inline-flex items-center justify-center gap-2 ${
                         copiedId === share.id
                           ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
                           : ""
                       }`}
                     >
-                      {copiedId === share.id ? "✓ Copied!" : "📋 Copy Link"}
+                      {copiedId === share.id ? <Check size={16} /> : <Copy size={16} />}
+                      <span>{copiedId === share.id ? "Copied" : "Copy Link"}</span>
                     </button>
                     <Link href={`/share/${share.id}`} className="btn-primary flex-1 text-center text-sm">
                       Preview
@@ -287,7 +293,10 @@ function ShareForm({
                     : "border-gray-300 bg-white hover:border-gray-400"
                 }`}
               >
-                <p className="font-bold mb-1">🆘 Emergency</p>
+                <p className="font-bold mb-1 flex items-center justify-center gap-2">
+                  <ShieldAlert size={16} />
+                  <span>Emergency</span>
+                </p>
                 <p className="text-xs text-gray-600">Allergies & meds</p>
               </button>
               <button
@@ -299,7 +308,10 @@ function ShareForm({
                     : "border-gray-300 bg-white hover:border-gray-400"
                 }`}
               >
-                <p className="font-bold mb-1">📋 Continuity</p>
+                <p className="font-bold mb-1 flex items-center justify-center gap-2">
+                  <ClipboardList size={16} />
+                  <span>Continuity</span>
+                </p>
                 <p className="text-xs text-gray-600">All records</p>
               </button>
             </div>

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
+  Check,
+  CheckCircle2,
   Pill,
   Heart,
   Copy,
@@ -12,6 +14,7 @@ import {
   X,
   Download,
   FileText,
+  Loader2,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useApp } from "@/lib/context";
@@ -554,8 +557,8 @@ ${conditions.length === 0 ? "None" : conditions.map((c) => `• ${(c as any).nam
             disabled={sharing}
             className="btn-primary flex-1 flex items-center justify-center gap-2 py-3"
           >
-            <Share2 size={18} />
-            {sharing ? "Generating..." : showShareModal ? "✓ Share Created" : "Generate Share Link"}
+            {sharing ? <Loader2 size={18} className="animate-spin" /> : showShareModal ? <CheckCircle2 size={18} /> : <Share2 size={18} />}
+            <span>{sharing ? "Generating..." : showShareModal ? "Share Created" : "Generate Share Link"}</span>
           </button>
           <button
             onClick={handleCopy}
@@ -625,8 +628,8 @@ ${conditions.length === 0 ? "None" : conditions.map((c) => `• ${(c as any).nam
                       : "bg-blue-600 text-white hover:bg-blue-700"
                   }`}
                 >
-                  <Copy size={16} />
-                  {urlCopied ? "✓ Copied" : "Copy Link"}
+                  {urlCopied ? <Check size={16} /> : <Copy size={16} />}
+                  <span>{urlCopied ? "Copied" : "Copy Link"}</span>
                 </button>
 
                 <button

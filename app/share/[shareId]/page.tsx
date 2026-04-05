@@ -6,6 +6,7 @@ import { useApp } from "@/lib/context";
 import { SourceBadge } from "@/lib/metadata-badges";
 import { Share } from "@/lib/types";
 import { getRemoteShareStatus } from "@/lib/supabase";
+import { Clock3, Lock, TriangleAlert } from "lucide-react";
 
 type ShareStatus = "active" | "revoked" | "expired" | "notfound";
 type SharedDocument = NonNullable<Share["documentSnapshots"]>[number];
@@ -171,7 +172,7 @@ export default function ProviderViewPage({ params }: { params: Promise<{ shareId
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="card text-center max-w-md">
-          <p className="text-3xl mb-3">🔒</p>
+          <Lock size={32} className="mx-auto mb-3 text-slate-500" />
           <p className="text-2xl font-bold text-gray-900 mb-2">Share Revoked</p>
           <p className="text-gray-600 mb-4">
             This shared health record is no longer available. The patient has revoked access.
@@ -188,7 +189,7 @@ export default function ProviderViewPage({ params }: { params: Promise<{ shareId
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="card text-center max-w-md">
-          <p className="text-3xl mb-3">⏰</p>
+          <Clock3 size={32} className="mx-auto mb-3 text-slate-500" />
           <p className="text-2xl font-bold text-gray-900 mb-2">Share Expired</p>
           <p className="text-gray-600 mb-4">
             This shared health record is no longer available. The share link has expired.
@@ -272,7 +273,10 @@ export default function ProviderViewPage({ params }: { params: Promise<{ shareId
         {severeAllergies.length > 0 && (
           <div className="bg-red-50 border-l-4 border-l-red-700 p-4 sm:p-6 mb-6 shadow-sm">
             <h2 className="text-xs font-bold text-red-800 uppercase tracking-wider mb-3">
-              ⚠ CRITICAL ALERT: SEVERE ALLERGIES
+              <span className="inline-flex items-center gap-2">
+                <TriangleAlert size={14} />
+                <span>Critical Alert: Severe Allergies</span>
+              </span>
             </h2>
             <div className="space-y-2">
               {severeAllergies.map((a) => (

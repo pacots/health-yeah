@@ -5,6 +5,7 @@ import { useApp } from "@/lib/context";
 import { MedicationRecord } from "@/lib/types";
 import { SourceBadge, LastUpdated } from "@/lib/metadata-badges";
 import Link from "next/link";
+import { Pill, Plus } from "lucide-react";
 
 export default function MedicationsPage() {
   const { records, addRecord, deleteRecord } = useApp();
@@ -24,8 +25,12 @@ export default function MedicationsPage() {
             <h1 className="page-title">Medications</h1>
             <p className="page-subtitle">Your current medications and supplements</p>
           </div>
-          <button onClick={() => setShowForm(true)} className="btn-primary btn-sm whitespace-nowrap flex-shrink-0">
-            + Add Medication
+          <button
+            onClick={() => setShowForm(true)}
+            className="btn-primary btn-sm whitespace-nowrap flex-shrink-0 inline-flex items-center gap-2"
+          >
+            <Plus size={16} />
+            <span>Add Medication</span>
           </button>
         </div>
 
@@ -43,7 +48,7 @@ export default function MedicationsPage() {
         {/* List */}
         {medications.length === 0 ? (
           <div className="empty-state">
-            <p className="empty-state-icon">💊</p>
+            <Pill size={36} className="empty-state-icon mx-auto" />
             <p className="text-xl font-semibold text-slate-900 mb-2">No medications recorded</p>
             <p className="empty-state-text">Add your current medications to your health record</p>
           </div>

@@ -52,7 +52,7 @@ export default function AllergiesPage() {
         {/* List */}
         {allergies.length === 0 ? (
           <div className="empty-state">
-            <p className="empty-state-icon">🚨</p>
+            <AlertTriangle size={36} className="empty-state-icon mx-auto" />
             <p className="text-xl font-semibold text-slate-900 mb-2">No allergies recorded</p>
             <p className="empty-state-text">Add your known allergies to your health record</p>
           </div>

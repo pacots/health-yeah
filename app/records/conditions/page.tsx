@@ -5,6 +5,7 @@ import { useApp } from "@/lib/context";
 import { ConditionRecord } from "@/lib/types";
 import Link from "next/link";
 import { ConditionCard } from "@/app/components/ConditionCard";
+import { Heart, Plus } from "lucide-react";
 
 export default function ConditionsPage() {
   const { records, addRecord, deleteRecord, documents } = useApp();
@@ -29,8 +30,12 @@ export default function ConditionsPage() {
             <h1 className="page-title">Medical Conditions</h1>
             <p className="page-subtitle">Your documented health conditions</p>
           </div>
-          <button onClick={() => setShowForm(true)} className="btn-primary btn-sm whitespace-nowrap flex-shrink-0">
-            + Add Condition
+          <button
+            onClick={() => setShowForm(true)}
+            className="btn-primary btn-sm whitespace-nowrap flex-shrink-0 inline-flex items-center gap-2"
+          >
+            <Plus size={16} />
+            <span>Add Condition</span>
           </button>
         </div>
 
@@ -48,7 +53,7 @@ export default function ConditionsPage() {
         {/* List */}
         {conditions.length === 0 ? (
           <div className="empty-state">
-            <p className="empty-state-icon">🏥</p>
+            <Heart size={36} className="empty-state-icon mx-auto" />
             <p className="text-xl font-semibold text-slate-900 mb-2">No conditions recorded</p>
             <p className="empty-state-text">Document your medical conditions and health status</p>
           </div>

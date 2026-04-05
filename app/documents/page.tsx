@@ -6,6 +6,7 @@ import { Document } from "@/lib/types";
 import Link from "next/link";
 import { ConfirmDialog } from "@/lib/ConfirmDialog";
 import { DocumentSuggestions } from "@/app/components/DocumentSuggestions";
+import { Check, Download, FileText, Info, Lightbulb, Loader2, X } from "lucide-react";
 
 export default function DocumentsPage() {
   const { documents, addDocument, deleteDocument } = useApp();
@@ -209,8 +210,11 @@ export default function DocumentsPage() {
               </div>
 
               {/* Text vs File instruction */}
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
-                📝 Write text content <strong>or</strong> upload a file, but not both
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700 flex items-start gap-2">
+                <Info size={16} className="mt-0.5 flex-shrink-0" />
+                <span>
+                  Write text content <strong>or</strong> upload a file, but not both
+                </span>
               </div>
 
               {/* Text Content */}
@@ -248,8 +252,11 @@ export default function DocumentsPage() {
                     PDF, JPG, PNG, WEBP up to 15MB
                   </p>
                   {formData.file && (
-                    <p className="text-sm text-gray-700 mt-2 font-medium">
-                      ✓ {formData.file.name} ({(formData.file.size / 1024).toFixed(1)} KB)
+                    <p className="text-sm text-gray-700 mt-2 font-medium flex items-center justify-center gap-2">
+                      <Check size={16} className="text-emerald-600" />
+                      <span>
+                        {formData.file.name} ({(formData.file.size / 1024).toFixed(1)} KB)
+                      </span>
                     </p>
                   )}
                 </div>
@@ -383,10 +390,10 @@ function DocumentDetailModal({
           </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-2xl font-bold flex-shrink-0"
+            className="text-gray-500 hover:text-gray-700 flex-shrink-0"
             aria-label="Close"
           >
-            ×
+            <X size={24} />
           </button>
         </div>
 
@@ -437,8 +444,9 @@ function DocumentDetailModal({
 
               {/* PDF Note */}
               {doc.extension?.toLowerCase() === "pdf" && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
-                  📄 PDF document. Click "Download" to view in full.
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700 flex items-start gap-2">
+                  <FileText size={16} className="mt-0.5 flex-shrink-0" />
+                  <span>PDF document. Click "Download" to view in full.</span>
                 </div>
               )}
             </div>
@@ -452,7 +460,7 @@ function DocumentDetailModal({
 
             {doc.aiSummaryStatus === "processing" && (
               <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-700 flex items-center gap-2">
-                <span className="animate-spin">⏳</span>
+                <Loader2 size={16} className="animate-spin" />
                 Processing document with AI...
               </div>
             )}
@@ -469,9 +477,12 @@ function DocumentDetailModal({
                     {doc.aiConditionSuggestions.some(s => !s.reviewed) && (
                       <button
                         onClick={onShowSuggestions}
-                        className="flex-1 px-4 py-2 bg-blue-100 text-blue-700 font-medium rounded hover:bg-blue-200 transition text-sm"
+                        className="flex-1 px-4 py-2 bg-blue-100 text-blue-700 font-medium rounded hover:bg-blue-200 transition text-sm flex items-center justify-center gap-2"
                       >
-                        💡 Review Condition Suggestions ({doc.aiConditionSuggestions.filter(s => !s.reviewed).length})
+                        <Lightbulb size={16} />
+                        <span>
+                          Review Condition Suggestions ({doc.aiConditionSuggestions.filter(s => !s.reviewed).length})
+                        </span>
                       </button>
                     )}
                   </div>
@@ -501,9 +512,10 @@ function DocumentDetailModal({
           {doc.kind === "file" && (
             <button
               onClick={handleDownload}
-              className="btn-secondary flex-1 text-sm"
+              className="btn-secondary flex-1 text-sm flex items-center justify-center gap-2"
             >
-              📥 Download
+              <Download size={16} />
+              <span>Download</span>
             </button>
           )}
           <button
