@@ -5,6 +5,7 @@ import { Patient, Record, Document, Share, Wallet } from "./types";
 import { storage, generateShareId } from "./storage";
 import { createRemoteShare, getRemoteShare, revokeRemoteShare } from "./supabase";
 import { buildShareSnapshot } from "./sharing/buildShareSnapshot";
+import { buildWalletExport, downloadWalletExport, parseWalletExportFile, walletFromExport } from "./wallet-transfer";
 
 type AppContextType = {
   // State
@@ -55,6 +56,8 @@ type AppContextType = {
 
   // Utility
   resetToDemo: () => Promise<void>;
+  exportWalletBackup: () => Promise<void>;
+  importWalletBackup: (file: File) => Promise<void>;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -606,6 +609,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setDocuments(wallet.documents);
   };
 
+  const exportWalletBackup = async () => {
+    const wallet = await storage.getWallet();
+    if (!wallet) {
+      throw new Error("No wallet data available to export.");
+    }
+
+    const payload = buildWalletExport(wallet);
+    downloadWalletExport(payload);
+  };
+
+  const importWalletBackup = async (file: File) => {
+    const parsedExport = await parseWalletExportFile(file);
+    const importedWallet = walletFromExport(parsedExport);
+    const previousWallet = await storage.getWallet();
+
+    // Replace strategy: clear then write imported wallet.
+    await storage.clear();
+
+    try {
+      await storage.setWallet(importedWallet);
+      setPatient(importedWallet.patient);
+      setRecords(importedWallet.records);
+      setDocuments(importedWallet.documents);
+    } catch (error) {
+      // Roll back previous wallet if restore fails after clear.
+      if (previousWallet) {
+        await storage.setWallet(previousWallet);
+        setPatient(previousWallet.patient);
+        setRecords(previousWallet.records);
+        setDocuments(previousWallet.documents);
+      }
+      throw error;
+    }
+  };
+
   const value: AppContextType = {
     patient,
     records,
@@ -629,6 +667,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     deleteShare,
     revokeShare,
     resetToDemo,
+    exportWalletBackup,
+    importWalletBackup,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
