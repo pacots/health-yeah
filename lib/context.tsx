@@ -53,31 +53,83 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize app - load wallet once
   useEffect(() => {
+    let initTimeout: NodeJS.Timeout | null = null;
+    let isComponentMounted = true;
+
     const initialize = async () => {
       try {
-        // Load existing wallet data
-        const wallet = await storage.initializeWallet();
+        console.log("[App] Initializing...");
+
+        // Set a timeout for the entire initialization (max 10 seconds)
+        const initPromise = new Promise<Wallet>((resolve, reject) => {
+          initTimeout = setTimeout(() => {
+            reject(new Error("Initialization timeout - IndexedDB may be locked or unavailable"));
+          }, 10000);
+
+          // Start the actual initialization
+          storage.initializeWallet()
+            .then((wallet) => {
+              if (initTimeout) clearTimeout(initTimeout);
+              resolve(wallet);
+            })
+            .catch((err) => {
+              if (initTimeout) clearTimeout(initTimeout);
+              reject(err);
+            });
+        });
+
+        const wallet = await initPromise;
+
+        // Only update state if component is still mounted
+        if (!isComponentMounted) return;
+
+        console.log("[App] Wallet loaded, setting state...");
         setPatient(wallet.patient);
         setRecords(wallet.records);
+        setDocuments(wallet.documents);
 
-        // Load documents from API
-        try {
-          const response = await fetch("/api/documents");
-          if (response.ok) {
-            const docs = await response.json();
-            setDocuments(docs);
-          } else {
-            // Fallback to wallet documents if API fails
-            setDocuments(wallet.documents);
-          }
-        } catch (error) {
-          console.warn("Failed to load documents from API, using wallet data:", error);
-          setDocuments(wallet.documents);
-        }
+        // Try to fetch fresh documents from API (non-blocking, async)
+        // This is a background refresh, doesn't block rendering
+        const controller = new AbortController();
+        const fetchTimeoutId = setTimeout(() => controller.abort(), 5000);
+
+        fetch("/api/documents", {
+          signal: controller.signal,
+        })
+          .then((response) => {
+            if (response.ok) {
+              return response.json();
+            }
+            throw new Error("API returned " + response.status);
+          })
+          .then((docs) => {
+            if (isComponentMounted) {
+              console.log("[App] Fresh documents loaded from API");
+              setDocuments(docs);
+            }
+          })
+          .catch((error) => {
+            console.log("[App] Using wallet documents (API failed or offline):", error.message);
+            // Already set to wallet.documents above, so we're good
+          })
+          .finally(() => {
+            clearTimeout(fetchTimeoutId);
+          });
       } catch (error) {
-        console.error("Failed to initialize wallet:", error);
+        console.error("[App] Failed to initialize wallet:", error);
+        // Still set data to empty state so app can boot
+        if (isComponentMounted) {
+          setPatient(null);
+          setRecords([]);
+          setDocuments([]);
+        }
       } finally {
-        setLoading(false);
+        // CRITICAL: Always clear loading state, even if errors occur
+        if (isComponentMounted) {
+          console.log("[App] Initialization complete");
+          setLoading(false);
+        }
+        if (initTimeout) clearTimeout(initTimeout);
       }
     };
 
@@ -85,6 +137,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== "undefined") {
       initialize();
     }
+
+    // Cleanup: mark component as unmounted
+    return () => {
+      isComponentMounted = false;
+      if (initTimeout) clearTimeout(initTimeout);
+    };
   }, []);
 
   // Persist entire wallet after any change
