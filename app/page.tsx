@@ -2,7 +2,7 @@
 
 import { useApp } from "@/lib/context";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AlertTriangle, Pill, Heart, FileText, Share2, CheckCircle, Plus, Phone, ArrowRight } from "lucide-react";
 import { ConfirmDialog } from "@/lib/ConfirmDialog";
 
@@ -10,6 +10,22 @@ export default function Home() {
   const { patient, records, documents, loading, resetToDemo } = useApp();
   const [resetting, setResetting] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  
+  // Check for saved parameter from profile redirect
+  const [showSavedMessage, setShowSavedMessage] = useState(false);
+  
+  // Use effect to check URL params and show message
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('saved')) {
+      setShowSavedMessage(true);
+      // Clear the URL parameter
+      window.history.replaceState({}, document.title, window.location.pathname);
+      // Hide message after 3 seconds
+      const timer = setTimeout(() => setShowSavedMessage(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -67,25 +83,52 @@ export default function Home() {
           </button>
         </div>
 
+        {/* Success Message */}
+        {showSavedMessage && (
+          <div className="alert-success mb-6 text-sm">
+            ✓ Profile saved successfully
+          </div>
+        )}
+
         {/* Patient Card - Premium */}
         <div className="card-premium section-spacing-narrow">
           <div className="flex flex-col sm:flex-row justify-between items-start gap-6">
             <div className="flex-1 min-w-0">
               <p className="section-header mb-2">Patient Profile</p>
-              <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 break-words">{patient.name}</h2>
-              <p className="text-sm text-slate-600 mt-2 flex items-center gap-2">
-                <span className="text-slate-400">Born</span> {new Date(patient.dateOfBirth).toLocaleDateString()}
-              </p>
-              {patient.emergencyContact && (
-                <div className="mt-5 pt-5 border-t border-blue-200/50">
-                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-3 flex items-center gap-2">
-                    <Phone size={14} className="text-blue-600" /> Emergency Contact
+              <div className="flex flex-col sm:flex-row sm:items-baseline gap-3 mb-4">
+                <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 break-words">{patient.name}</h2>
+                {patient.bloodType && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800 border border-blue-200 whitespace-nowrap">
+                    {patient.bloodType}
+                  </span>
+                )}
+              </div>
+              
+              <div className="space-y-3 text-sm">
+                <div>
+                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">Date of Birth</p>
+                  <p className="text-base text-slate-900 font-medium">{new Date(patient.dateOfBirth).toLocaleDateString()}</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Age: {Math.floor((Date.now() - new Date(patient.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))} years
                   </p>
-                  <p className="font-semibold text-slate-900 text-lg">{patient.emergencyContact.name}</p>
-                  <p className="text-sm text-slate-600 mt-1">{patient.emergencyContact.relationship}</p>
-                  <p className="text-base font-mono font-semibold text-blue-700 mt-2">{patient.emergencyContact.phone}</p>
                 </div>
-              )}
+
+                {patient.emergencyContact && (
+                  <div className="pt-3 mt-4 border-t border-blue-200/50">
+                    <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2 flex items-center gap-2">
+                      <Phone size={14} className="text-blue-600" /> Emergency Contact
+                    </p>
+                    <p className="font-semibold text-slate-900">{patient.emergencyContact.name}</p>
+                    <p className="text-xs text-slate-500 mt-1">{patient.emergencyContact.relationship}</p>
+                    <p className="text-sm font-mono font-semibold text-blue-700 mt-2">{patient.emergencyContact.phone}</p>
+                  </div>
+                )}
+
+                <div className="pt-3 mt-4 border-t border-blue-200/50">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Last Updated</p>
+                  <p className="text-xs text-slate-600 mt-1">{new Date(patient.updatedAt).toLocaleString()}</p>
+                </div>
+              </div>
             </div>
             <Link href="/profile" className="btn-secondary btn-sm whitespace-nowrap flex-shrink-0 self-start sm:self-auto">
               Edit Profile
