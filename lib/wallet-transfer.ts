@@ -11,7 +11,7 @@ type UnknownObject = { [key: string]: unknown };
 
 export type WalletExportV1 = {
   version: 1;
-  app: "health-wallet";
+  app: "health-yeah";
   exportedAt: string;
   wallet: {
     profile: Patient;
@@ -121,7 +121,7 @@ export function buildWalletExport(wallet: Wallet): WalletExportV1 {
 
   return {
     version: 1,
-    app: "health-wallet",
+    app: "health-yeah",
     exportedAt: new Date().toISOString(),
     wallet: {
       profile: wallet.patient,
@@ -142,7 +142,7 @@ export function downloadWalletExport(payload: WalletExportV1): void {
   const blob = new Blob([content], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const datePart = new Date().toISOString().slice(0, 10);
-  const fileName = `health-wallet-export-${datePart}.json`;
+  const fileName = `health-yeah-export-${datePart}.json`;
 
   const anchor = document.createElement("a");
   anchor.href = url;
@@ -168,8 +168,8 @@ export function validateWalletExportPayload(payload: unknown): {
     return { ok: false, error: "Unsupported export version." };
   }
 
-  if (payload.app !== "health-wallet") {
-    return { ok: false, error: "This file is not a health-wallet export." };
+  if (payload.app !== "health-yeah") {
+    return { ok: false, error: "This file is not a Health Yeah export." };
   }
 
   if (!isString(payload.exportedAt)) {

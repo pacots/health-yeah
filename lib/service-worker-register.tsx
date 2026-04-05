@@ -28,7 +28,7 @@ export default function ServiceWorkerRegister() {
               console.log("[PWA] New version available");
               // Notify client
               if ("Notification" in window && Notification.permission === "granted") {
-                new Notification("Health Wallet Updated", {
+                new Notification("Health Yeah Updated", {
                   body: "Pull down to refresh",
                 });
               }

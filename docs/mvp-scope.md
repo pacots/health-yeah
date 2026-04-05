@@ -1,4 +1,4 @@
-# MVP Scope: Local-First Health Wallet
+# MVP Scope: Local-First Health Yeah
 
 ## What We're Building
 
