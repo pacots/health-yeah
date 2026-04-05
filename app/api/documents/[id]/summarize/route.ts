@@ -114,6 +114,7 @@ export async function POST(
     if (summary) {
       // NEW: Extract entities from the summary
       extractedEntities = parseDocumentSummaryIntoEntities(summary);
+      console.log("🔍 Extracted entities:", JSON.stringify(extractedEntities, null, 2));
 
       // NEW: Build existing entities list from all records (all types)
       const existingEntities: ExistingEntity[] = allRecords
@@ -130,9 +131,14 @@ export async function POST(
             : (r as AllergyRecord).allergen,
         }));
 
+      console.log("📦 Existing entities:", JSON.stringify(existingEntities, null, 2));
+
       // NEW: Generate unified entity matches
       if (extractedEntities.length > 0) {
         entityMatches = await generateUnifiedEntityMatches(extractedEntities, existingEntities);
+        console.log("✅ Entity matches:", JSON.stringify(entityMatches, null, 2));
+      } else {
+        console.log("⚠️ No entities extracted from summary");
       }
 
       // Legacy: Also generate condition-only suggestions for backward compatibility

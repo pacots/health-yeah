@@ -7,14 +7,20 @@ import Link from "next/link";
 import { ConditionCard } from "@/app/components/ConditionCard";
 
 export default function ConditionsPage() {
-  const { records, addRecord, deleteRecord, documents } = useApp();
+  const { records, addRecord, updateRecord, deleteRecord, documents } = useApp();
   const [showForm, setShowForm] = useState(false);
+  const [editingCondition, setEditingCondition] = useState<ConditionRecord | null>(null);
 
   const conditions = records.filter((r) => r.type === "condition") as ConditionRecord[];
 
   // Helper to get documents linked to a condition
   const getLinkedDocuments = (conditionId: string) => {
     return documents.filter((d) => d.linkedConditionIds?.includes(conditionId) || false);
+  };
+
+  const handleEditCondition = (condition: ConditionRecord) => {
+    setEditingCondition(condition);
+    setShowForm(true);
   };
 
   return (
@@ -29,7 +35,10 @@ export default function ConditionsPage() {
             <h1 className="page-title">Medical Conditions</h1>
             <p className="page-subtitle">Your documented health conditions</p>
           </div>
-          <button onClick={() => setShowForm(true)} className="btn-primary btn-sm whitespace-nowrap flex-shrink-0">
+          <button onClick={() => {
+            setEditingCondition(null);
+            setShowForm(true);
+          }} className="btn-primary btn-sm whitespace-nowrap flex-shrink-0">
             + Add Condition
           </button>
         </div>
@@ -37,10 +46,24 @@ export default function ConditionsPage() {
         {/* Form Modal */}
         {showForm && (
           <ConditionForm
-            onClose={() => setShowForm(false)}
-            onSave={async (data) => {
-              await addRecord(data);
+            condition={editingCondition}
+            onClose={() => {
               setShowForm(false);
+              setEditingCondition(null);
+            }}
+            onSave={async (data) => {
+              if (editingCondition) {
+                // Edit existing
+                await updateRecord({
+                  ...editingCondition,
+                  ...data,
+                });
+              } else {
+                // Add new
+                await addRecord(data);
+              }
+              setShowForm(false);
+              setEditingCondition(null);
             }}
           />
         )}
@@ -59,6 +82,7 @@ export default function ConditionsPage() {
                 key={condition.id}
                 condition={condition}
                 linkedDocuments={getLinkedDocuments(condition.id)}
+                onEdit={handleEditCondition}
                 onDelete={deleteRecord}
               />
             ))}
@@ -70,18 +94,20 @@ export default function ConditionsPage() {
 }
 
 function ConditionForm({
+  condition,
   onClose,
   onSave,
 }: {
+  condition?: ConditionRecord | null;
   onClose: () => void;
   onSave: (data: any) => Promise<void>;
 }) {
-  const [name, setName] = useState("");
+  const [name, setName] = useState(condition?.name || "");
   const [status, setStatus] = useState<"active" | "resolved" | "chronic">(
-    "active"
+    condition?.status || "active"
   );
-  const [onsetDate, setOnsetDate] = useState("");
-  const [notes, setNotes] = useState("");
+  const [onsetDate, setOnsetDate] = useState(condition?.onsetDate || "");
+  const [notes, setNotes] = useState(condition?.notes || "");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -91,12 +117,15 @@ function ConditionForm({
     setLoading(true);
     try {
       await onSave({
+        ...(condition ? { id: condition.id, createdAt: condition.createdAt } : {}),
         type: "condition",
         name,
         status,
         onsetDate: onsetDate || undefined,
-        source: "self-reported",
+        source: condition?.source || "self-reported",
         notes: notes || undefined,
+        linkedDocumentIds: condition?.linkedDocumentIds,
+        progressSummary: condition?.progressSummary,
       });
     } finally {
       setLoading(false);
@@ -106,7 +135,9 @@ function ConditionForm({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Add Condition</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          {condition ? 'Edit Condition' : 'Add Condition'}
+        </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="label">Condition Name *</label>
@@ -160,7 +191,7 @@ function ConditionForm({
               disabled={loading}
               className="btn-primary flex-1"
             >
-              {loading ? "Saving..." : "Save"}
+              {loading ? "Saving..." : condition ? "Update" : "Save"}
             </button>
             <button
               type="button"

@@ -52,6 +52,11 @@ type AppContextType = {
   ) => Promise<void>;
   unlinkDocumentFromCondition: (documentId: string, conditionId: string) => Promise<void>;
 
+  // NEW: Summarization and linking for all record types
+  summarizeCondition: (conditionId: string) => Promise<void>;
+  linkDocumentToRecord: (documentId: string, recordId: string, recordType: MedicalEntityType) => Promise<void>;
+  unlinkDocumentFromRecord: (documentId: string, recordId: string, recordType: MedicalEntityType) => Promise<void>;
+
   // Share actions
   createShare: (scope: "emergency" | "continuity", selectedRecordIds: string[]) => Promise<Share>;
   getShare: (shareId: string) => Promise<Share | null>;
@@ -160,15 +165,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     records?: Record[];
     documents?: Document[];
   }) => {
-    const existingWallet = await storage.getWallet();
-    const wallet: Wallet = {
-      patient: updates.patient ?? patient ?? null,
-      records: updates.records ?? records,
-      documents: updates.documents ?? (Array.isArray(documents) ? documents : []),
-      shares: existingWallet?.shares || {},
-      preferences: existingWallet?.preferences || {},
-    };
-    await storage.setWallet(wallet);
+    try {
+      console.log("💾 persistWallet called with:", Object.keys(updates));
+      
+      const existingWallet = await storage.getWallet();
+      const wallet: Wallet = {
+        patient: updates.patient ?? patient ?? null,
+        records: updates.records ?? records,
+        documents: updates.documents ?? (Array.isArray(documents) ? documents : []),
+        shares: existingWallet?.shares || {},
+        preferences: existingWallet?.preferences || {},
+      };
+      
+      console.log("💾 Wallet structured, saving...", {
+        recordsCount: wallet.records.length,
+        docsCount: wallet.documents.length,
+      });
+      
+      await storage.setWallet(wallet);
+      
+      console.log("✅ persistWallet complete");
+    } catch (error) {
+      console.error("🔴 persistWallet failed:", error);
+      throw error;
+    }
   };
 
   const createEmptyWallet = async () => {
@@ -703,6 +723,126 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return shareSnapshot;
   };
 
+  // NEW: Condition summarization
+  const summarizeCondition = async (conditionId: string) => {
+    try {
+      console.log("📋 summarizeCondition called for:", conditionId);
+      
+      const condition = records.find((r) => r.id === conditionId && r.type === "condition") as ConditionRecord | undefined;
+      if (!condition) {
+        console.error("🔴 Condition not found:", conditionId);
+        return;
+      }
+      
+      console.log("✅ Found condition:", condition.name);
+
+      const linkedDocs = documents.filter((d) => condition.linkedDocumentIds?.includes(d.id));
+      console.log("📄 Linked documents count:", linkedDocs.length);
+      
+      if (linkedDocs.length === 0) {
+        console.warn("🔴 No linked documents for condition summarization");
+        return;
+      }
+
+      // Import the function dynamically to avoid circular dependencies
+      const { generateConditionSummary } = await import("./openai");
+      
+      console.log("🟡 Calling generateConditionSummary...");
+      const summary = await generateConditionSummary(condition, linkedDocs);
+      
+      console.log("📝 Generated summary:", summary?.substring(0, 100) + "...");
+      
+      if (summary) {
+        const updatedCondition: ConditionRecord = {
+          ...condition,
+          progressSummary: summary,
+          updatedAt: Date.now(),
+        };
+        
+        console.log("🔄 Updating records in state...");
+        const updatedRecords = records.map((r) => r.id === conditionId ? updatedCondition : r);
+        setRecords(updatedRecords);
+        
+        console.log("💾 Persisting to wallet...");
+        try {
+          await persistWallet({ records: updatedRecords });
+          console.log("✅ Wallet persisted successfully");
+        } catch (persistError) {
+          console.error("🔴 Failed to persist wallet:", persistError);
+          throw persistError;
+        }
+        
+        console.log("✅ summarizeCondition complete!");
+      } else {
+        console.warn("⚠️ No summary generated");
+      }
+    } catch (error) {
+      console.error("🔴 Failed to summarize condition:", error);
+    }
+  };
+
+  // NEW: Generic document linking for all record types
+  const linkDocumentToRecord = async (documentId: string, recordId: string, recordType: MedicalEntityType) => {
+    try {
+      const document = documents.find((d) => d.id === documentId);
+      if (!document) return;
+
+      const linkedKey = recordType === 'condition' ? 'linkedConditionIds' 
+                      : recordType === 'allergy' ? 'linkedAllergyIds'
+                      : 'linkedMedicationIds';
+
+      const updatedDoc = {
+        ...document,
+        [linkedKey]: [...((document as any)[linkedKey] || []), recordId],
+      };
+
+      const record = records.find((r) => r.id === recordId);
+      if (record) {
+        const updatedRecord = {
+          ...record,
+          linkedDocumentIds: [...(record.linkedDocumentIds || []), documentId],
+        };
+        
+        const updatedRecords = records.map((r) => r.id === recordId ? updatedRecord : r);
+        const updatedDocs = documents.map((d) => d.id === documentId ? updatedDoc : d);
+        
+        setRecords(updatedRecords);
+        setDocuments(updatedDocs);
+        await persistWallet({ records: updatedRecords, documents: updatedDocs });
+      }
+    } catch (error) {
+      console.error("Failed to link document to record:", error);
+    }
+  };
+
+  // NEW: Generic document unlinking for all record types
+  const unlinkDocumentFromRecord = async (documentId: string, recordId: string, recordType: MedicalEntityType) => {
+    try {
+      const linkedKey = recordType === 'condition' ? 'linkedConditionIds'
+                      : recordType === 'allergy' ? 'linkedAllergyIds'
+                      : 'linkedMedicationIds';
+
+      const updatedDoc = {
+        ...documents.find((d) => d.id === documentId),
+        [linkedKey]: ((documents.find((d) => d.id === documentId) as any)?.[linkedKey] || []).filter((id: string) => id !== recordId),
+      };
+
+      const updatedRecord = {
+        ...records.find((r) => r.id === recordId),
+        linkedDocumentIds: (records.find((r) => r.id === recordId)?.linkedDocumentIds || []).filter((id) => id !== documentId),
+      };
+
+      const updatedRecords = records.map((r) => r.id === recordId ? updatedRecord : r);
+      const updatedDocs = documents.map((d) => d.id === documentId ? updatedDoc : d);
+      
+      setRecords(updatedRecords);
+      setDocuments(updatedDocs);
+      await persistWallet({ records: updatedRecords, documents: updatedDocs });
+    } catch (error) {
+      console.error("Failed to unlink document from record:", error);
+    }
+  };
+
   const getShare = async (shareId: string) => {
     // Try remote storage first (Supabase) for cross-device access
     try {
@@ -816,6 +956,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     dismissConditionSuggestion,
     acceptConditionSuggestionWithManualSelect,
     unlinkDocumentFromCondition,
+    summarizeCondition,
+    linkDocumentToRecord,
+    unlinkDocumentFromRecord,
     createShare,
     getShare,
     getAllShares,

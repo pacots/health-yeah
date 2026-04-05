@@ -43,6 +43,7 @@ export type AllergyRecord = {
   reaction?: string;
   source: "self-reported" | "document-backed" | "derived";
   sourceDocId?: string;
+  linkedDocumentIds?: string[]; // Documents linked to this allergy
   notes?: string;
   createdAt: number;
   updatedAt: number;
@@ -57,6 +58,7 @@ export type MedicationRecord = {
   indication?: string;
   source: "self-reported" | "document-backed" | "derived";
   sourceDocId?: string;
+  linkedDocumentIds?: string[]; // Documents linked to this medication
   notes?: string;
   createdAt: number;
   updatedAt: number;
