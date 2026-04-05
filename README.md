@@ -96,5 +96,4 @@ Reset and reload to start fresh.
 - Minimal dependencies (localforage only extra library)
 
 ## License
-
 MIT
