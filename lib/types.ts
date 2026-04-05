@@ -80,7 +80,45 @@ export type ConditionRecord = {
 export type Record = AllergyRecord | MedicationRecord | ConditionRecord;
 
 /**
- * AI-generated suggestion for linking a document to a condition
+ * Unified medical entity types across the system
+ */
+export type MedicalEntityType = 'condition' | 'allergy' | 'medication';
+
+/**
+ * Extracted medical entities from a document summary (without IDs, just names)
+ */
+export type ExtractedEntity = {
+  type: MedicalEntityType;
+  name: string;
+};
+
+/**
+ * Existing patient medical entities (with IDs for matching)
+ */
+export type ExistingEntity = {
+  id: string;
+  type: MedicalEntityType;
+  name: string;
+};
+
+/**
+ * Unified result from AI entity matching pipeline
+ * Replaces the old condition-only DocumentConditionSuggestion
+ */
+export type EntityMatchResult = {
+  type: MedicalEntityType;
+  extractedName: string;
+  finalName: string;
+  action: 'link-existing' | 'create-new';
+  matchedId?: string; // Only for action === 'link-existing'
+  confidence: number; // 0.0 to 1.0
+  reason?: string;
+  reviewed?: boolean;
+  accepted?: boolean;
+};
+
+/**
+ * AI-generated suggestion for linking a document to a condition (legacy)
  */
 export type DocumentConditionSuggestion = {
   type: "link-existing" | "create-new";
@@ -133,6 +171,13 @@ export type Document = {
   aiSummaryGeneratedAt?: string;
   aiSummaryError?: string;
 
+  // Unified entity matching (NEW)
+  /** Extracted medical entities from document summary (all types) */
+  extractedEntities?: ExtractedEntity[];
+  
+  /** AI entity match results from unified matching pipeline (all types) */
+  aiEntityMatches?: EntityMatchResult[];
+
   // Reserved for future features
   /** LLM-generated summary (hidden in current UI, for future use) */
   llmSummary?: string | null;
@@ -143,7 +188,13 @@ export type Document = {
   /** IDs of linked conditions (document-backed) */
   linkedConditionIds?: string[];
   
-  /** AI-generated suggestions for linking to conditions */
+  /** IDs of linked allergies (document-backed) */
+  linkedAllergyIds?: string[];
+  
+  /** IDs of linked medications (document-backed) */
+  linkedMedicationIds?: string[];
+  
+  /** AI-generated suggestions for linking to conditions (legacy - use aiEntityMatches) */
   aiConditionSuggestions?: DocumentConditionSuggestion[];
 
   // Legacy fields (deprecated, kept for compatibility)

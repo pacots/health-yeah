@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { Patient, Record, Document, Share, Wallet } from "./types";
+import { Patient, Record, Document, Share, Wallet, MedicalEntityType, EntityMatchResult, ConditionRecord, AllergyRecord, MedicationRecord } from "./types";
 import { storage, generateShareId } from "./storage";
 import { createRemoteShare, getRemoteShare, revokeRemoteShare } from "./supabase";
 import { buildShareSnapshot } from "./sharing/buildShareSnapshot";
@@ -35,7 +35,10 @@ type AppContextType = {
   updateDocument: (document: Document) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
 
-  // Document-Condition suggestion actions
+  // NEW: Unified entity matching actions (replaces condition-only logic)
+  processEntityMatch: (documentId: string, matchIndex: number, action: 'link' | 'dismiss' | 'create') => Promise<void>;
+
+  // Document-Condition suggestion actions (legacy - kept for backward compatibility)
   linkDocumentToExistingCondition: (documentId: string, conditionId: string) => Promise<void>;
   createNewConditionFromSuggestion: (
     suggestion: import("./types").DocumentConditionSuggestion,
@@ -305,6 +308,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           body: JSON.stringify({
             document: newDocument,
             activeConditions,
+            records, // NEW: Pass all records so AI can match against all entity types
           }),
         });
 
@@ -558,6 +562,122 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await persistWallet({ documents: updatedDocuments, records: updatedRecords });
   };
 
+  // NEW: Unified entity matching actions
+  const processEntityMatch = async (
+    documentId: string,
+    matchIndex: number,
+    actionType: 'link' | 'dismiss' | 'create'
+  ) => {
+    const document = documents.find((d) => d.id === documentId);
+    if (!document || !document.aiEntityMatches) return;
+
+    const match = document.aiEntityMatches[matchIndex];
+    if (!match) return;
+
+    // Helper: Get linked IDs key for entity type
+    const getLinkedIdsKey = (type: MedicalEntityType) => {
+      return type === 'condition' ? 'linkedConditionIds'
+        : type === 'allergy' ? 'linkedAllergyIds'
+        : 'linkedMedicationIds';
+    };
+
+    // Helper: Create a record from an EntityMatchResult
+    const createRecordFromMatch = (m: EntityMatchResult, docId: string) => {
+      const id = Math.random().toString(36).substring(2, 11);
+      const now = Date.now();
+      
+      if (m.type === 'condition') {
+        return {
+          id,
+          type: 'condition' as const,
+          name: m.finalName,
+          status: 'active' as const,
+          source: 'document-backed' as const,
+          sourceDocId: docId,
+          linkedDocumentIds: [docId],
+          createdAt: now,
+          updatedAt: now,
+        } as ConditionRecord;
+      } else if (m.type === 'allergy') {
+        return {
+          id,
+          type: 'allergy' as const,
+          allergen: m.finalName,
+          source: 'document-backed' as const,
+          sourceDocId: docId,
+          createdAt: now,
+          updatedAt: now,
+        } as AllergyRecord;
+      } else { // medication
+        return {
+          id,
+          type: 'medication' as const,
+          name: m.finalName,
+          dosage: '',
+          frequency: '',
+          source: 'document-backed' as const,
+          sourceDocId: docId,
+          createdAt: now,
+          updatedAt: now,
+        } as MedicationRecord;
+      }
+    };
+
+    if (actionType === 'dismiss') {
+      // Mark as reviewed/dismissed
+      const updatedMatches = [...document.aiEntityMatches];
+      updatedMatches[matchIndex] = { ...match, reviewed: true, accepted: false };
+      const updatedDoc = { ...document, aiEntityMatches: updatedMatches };
+      const updatedDocs = documents.map((d) => d.id === documentId ? updatedDoc : d);
+      setDocuments(updatedDocs);
+      await persistWallet({ documents: updatedDocs });
+    } else if (actionType === 'link' && match.action === 'link-existing' && match.matchedId) {
+      // Link to existing entity
+      const key = getLinkedIdsKey(match.type) as 'linkedConditionIds' | 'linkedAllergyIds' | 'linkedMedicationIds';
+      const linkedIds = [...(document[key] || [])];
+      if (!linkedIds.includes(match.matchedId)) {
+        linkedIds.push(match.matchedId);
+      }
+      
+      const updatedMatches = [...document.aiEntityMatches];
+      updatedMatches[matchIndex] = { ...match, reviewed: true, accepted: true };
+      
+      const updatedDoc = {
+        ...document,
+        [key]: linkedIds,
+        aiEntityMatches: updatedMatches,
+      };
+      
+      const updatedDocs = documents.map((d) => d.id === documentId ? updatedDoc : d);
+      setDocuments(updatedDocs);
+      await persistWallet({ documents: updatedDocs });
+    } else if (actionType === 'create' && match.action === 'create-new') {
+      // Create new entity and link
+      const newRecord = createRecordFromMatch(match, documentId);
+      const updatedRecords = [...records, newRecord];
+      
+      const key = getLinkedIdsKey(match.type) as 'linkedConditionIds' | 'linkedAllergyIds' | 'linkedMedicationIds';
+      const linkedIds = [...(document[key] || [])];
+      if (!linkedIds.includes(newRecord.id)) {
+        linkedIds.push(newRecord.id);
+      }
+      
+      const updatedMatches = [...document.aiEntityMatches];
+      updatedMatches[matchIndex] = { ...match, reviewed: true, accepted: true, matchedId: newRecord.id };
+      
+      const updatedDoc = {
+        ...document,
+        [key]: linkedIds,
+        aiEntityMatches: updatedMatches,
+      };
+      
+      const updatedDocs = documents.map((d) => d.id === documentId ? updatedDoc : d);
+      setDocuments(updatedDocs);
+      setRecords(updatedRecords);
+      await persistWallet({ records: updatedRecords, documents: updatedDocs });
+    }
+  };
+
   // Share actions
   const createShare = async (scope: "emergency" | "continuity", selectedRecordIds: string[]) => {
     if (!patient) throw new Error("No patient found");
@@ -690,6 +810,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addDocument,
     updateDocument,
     deleteDocument,
+    processEntityMatch,
     linkDocumentToExistingCondition,
     createNewConditionFromSuggestion,
     dismissConditionSuggestion,

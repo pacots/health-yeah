@@ -284,9 +284,9 @@ export default function DocumentsPage() {
               onShowSuggestions={() => setShowingSuggestionsFor(expandedDoc.id)}
             />
 
-            {/* Show suggestions modal if a document with pending suggestions is selected */}
-            {showingSuggestionsFor === expandedDoc.id && expandedDoc.aiConditionSuggestions && 
-              expandedDoc.aiConditionSuggestions.some(s => !s.reviewed) && (
+            {/* Show suggestions modal if a document with pending entity matches is selected */}
+            {showingSuggestionsFor === expandedDoc.id && expandedDoc.aiEntityMatches && 
+              expandedDoc.aiEntityMatches.some(m => !m.reviewed) && (
               <DocumentSuggestions
                 document={expandedDoc}
                 onClose={() => setShowingSuggestionsFor(null)}
@@ -463,15 +463,15 @@ function DocumentDetailModal({
                   {doc.aiStructuredSummary}
                 </div>
 
-                {/* Condition Suggestions Button */}
-                {doc.aiConditionSuggestions && doc.aiConditionSuggestions.length > 0 && (
+                {/* Entity Matches Button */}
+                {doc.aiEntityMatches && doc.aiEntityMatches.length > 0 && (
                   <div className="flex gap-2">
-                    {doc.aiConditionSuggestions.some(s => !s.reviewed) && (
+                    {doc.aiEntityMatches.some(m => !m.reviewed) && (
                       <button
                         onClick={onShowSuggestions}
                         className="flex-1 px-4 py-2 bg-blue-100 text-blue-700 font-medium rounded hover:bg-blue-200 transition text-sm"
                       >
-                        💡 Review Condition Suggestions ({doc.aiConditionSuggestions.filter(s => !s.reviewed).length})
+                        Review AI Matches ({doc.aiEntityMatches.filter(m => !m.reviewed).length})
                       </button>
                     )}
                   </div>

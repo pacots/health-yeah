@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Document, ConditionRecord, DocumentConditionSuggestion } from "@/lib/types";
-import { generateDocumentSummary, generateImageSummary, analyzeConditionSuggestions } from "@/lib/openai";
+import { Document, ConditionRecord, DocumentConditionSuggestion, ExtractedEntity, ExistingEntity, EntityMatchResult, AllergyRecord, MedicationRecord, Record } from "@/lib/types";
+import { generateDocumentSummary, generateImageSummary, analyzeConditionSuggestions, parseDocumentSummaryIntoEntities, generateUnifiedEntityMatches } from "@/lib/openai";
 // @ts-ignore - pdf-parse doesn't have TypeScript definitions
 import pdfParse from "pdf-parse";
 
@@ -33,11 +33,13 @@ export async function POST(
     const { id } = await params;
     const requestBody = await request.json();
     
-    // Handle two formats: 
+    // Handle multiple formats: 
     // 1. Old format with just document
-    // 2. New format with { document, activeConditions }
+    // 2. Format with { document, activeConditions }
+    // 3. NEW: Format with { document, activeConditions, records }
     const document: Document = requestBody.document || requestBody;
     const activeConditions: ConditionRecord[] = requestBody.activeConditions || [];
+    const allRecords: Record[] = requestBody.records || [];
 
     // Validate document
     if (!document || document.id !== id) {
@@ -106,8 +108,37 @@ export async function POST(
 
     // Analyze conditions based on the summary
     let suggestions: DocumentConditionSuggestion[] = [];
-    if (summary && activeConditions.length > 0) {
-      suggestions = await analyzeConditionSuggestions(summary, activeConditions);
+    let extractedEntities: ExtractedEntity[] = [];
+    let entityMatches: EntityMatchResult[] = [];
+    
+    if (summary) {
+      // NEW: Extract entities from the summary
+      extractedEntities = parseDocumentSummaryIntoEntities(summary);
+
+      // NEW: Build existing entities list from all records (all types)
+      const existingEntities: ExistingEntity[] = allRecords
+        .filter(
+          (r) => r.type === "condition" || r.type === "allergy" || r.type === "medication"
+        )
+        .map((r) => ({
+          id: r.id,
+          type: r.type as "condition" | "allergy" | "medication",
+          name: r.type === "condition"
+            ? (r as ConditionRecord).name
+            : r.type === "medication"
+            ? (r as MedicationRecord).name
+            : (r as AllergyRecord).allergen,
+        }));
+
+      // NEW: Generate unified entity matches
+      if (extractedEntities.length > 0) {
+        entityMatches = await generateUnifiedEntityMatches(extractedEntities, existingEntities);
+      }
+
+      // Legacy: Also generate condition-only suggestions for backward compatibility
+      if (activeConditions.length > 0) {
+        suggestions = await analyzeConditionSuggestions(summary, activeConditions);
+      }
     }
 
     // Return updated document with AI summary and suggestions
@@ -117,6 +148,8 @@ export async function POST(
       aiSummaryStatus: summary ? "ready" : "error",
       aiSummaryGeneratedAt: new Date().toISOString(),
       aiSummaryError: error,
+      extractedEntities,
+      aiEntityMatches: entityMatches,
       aiConditionSuggestions: suggestions,
       updatedAt: new Date().toISOString(),
     };
