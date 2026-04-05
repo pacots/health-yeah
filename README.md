@@ -10,7 +10,7 @@ A **local-first, patient-controlled health wallet** for managing and sharing ess
 ✅ **Emergency Summary** — One-click access to critical health info  
 ✅ **Health Sharing** — Share limited snapshots with providers  
 ✅ **Local-First** — All data stored on device, no backend required  
-✅ **Demo Data** — Pre-populated with realistic sample data  
+✅ **First-Run Onboarding** — Start from scratch or import an existing wallet  
 
 ## Quick Start
 
@@ -58,18 +58,15 @@ npm start
 - Create a share → data stored locally + generates a share ID
 - Share ID is used to create a URL like `/share/abc123`
 - Open on **same device** to view the shared record
-- Perfect for demos on a single browser; production would use a backend API
+- Works well on a single browser/device; production would use a backend API
 
-## Demo Data
+## First-Run Behavior
 
-The app loads with realistic demo patient data on first visit:
-- Patient: Sarah Chen
-- Allergies: Penicillin (severe), Sulfonamides (moderate)
-- Medications: Metformin, Lisinopril
-- Conditions: Type 2 Diabetes, Hypertension
-- Documents: Lab results, allergy test report
+On a fresh browser with no saved local wallet, the app opens in an empty onboarding state:
+- Create profile from scratch
+- Import existing profile backup
 
-Reset and reload to start fresh.
+No demo profile or seeded records are created automatically.
 
 ## Data Privacy
 
@@ -90,7 +87,7 @@ Reset and reload to start fresh.
 
 ## Development Notes
 
-- Demo data resets on browser cache clear
+- Wallet data persists in browser storage until cleared by the user
 - Share snapshots stored in IndexedDB (same device only)
 - No authentication (single-user device model)
 - Minimal dependencies (localforage only extra library)

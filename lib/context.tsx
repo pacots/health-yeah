@@ -13,6 +13,8 @@ type AppContextType = {
   records: Record[];
   documents: Document[];
   loading: boolean;
+  hasPersistedWallet: boolean;
+
 
   // Patient actions
   updatePatient: (patient: Patient) => Promise<void>;
@@ -55,7 +57,8 @@ type AppContextType = {
   revokeShare: (shareId: string) => Promise<void>;
 
   // Utility
-  resetToDemo: () => Promise<void>;
+  createEmptyWallet: () => Promise<void>;
+  resetWallet: () => Promise<void>;
   exportWalletBackup: () => Promise<void>;
   importWalletBackup: (file: File) => Promise<void>;
 };
@@ -67,6 +70,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [records, setRecords] = useState<Record[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasPersistedWallet, setHasPersistedWallet] = useState(false);
 
   // Initialize app - load wallet once
   useEffect(() => {
@@ -78,7 +82,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.log("[App] Initializing...");
 
         // Set a timeout for the entire initialization (max 10 seconds)
-        const initPromise = new Promise<Wallet>((resolve, reject) => {
+        const initPromise = new Promise<Wallet | null>((resolve, reject) => {
           initTimeout = setTimeout(() => {
             reject(new Error("Initialization timeout - IndexedDB may be locked or unavailable"));
           }, 10000);
@@ -100,17 +104,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // Only update state if component is still mounted
         if (!isComponentMounted) return;
 
-        console.log("[App] Wallet loaded, setting state...");
-        setPatient(wallet.patient);
-        setRecords(wallet.records);
-        // Load documents from wallet (client-side storage)
-        // API is only used for document creation/updates, not for loading
-        const walletDocs = wallet.documents || [];
-        setDocuments(walletDocs);
+        if (wallet?.patient) {
+          console.log("[App] Wallet loaded, setting state...");
+          setHasPersistedWallet(true);
+          setPatient(wallet.patient);
+          setRecords(wallet.records);
+          // Load documents from wallet (client-side storage)
+          // API is only used for document creation/updates, not for loading
+          const walletDocs = wallet.documents || [];
+          setDocuments(walletDocs);
+        } else {
+          console.log("[App] No wallet found, entering first-run state");
+          setHasPersistedWallet(false);
+          setPatient(null);
+          setRecords([]);
+          setDocuments([]);
+        }
       } catch (error) {
         console.error("[App] Failed to initialize wallet:", error);
         // Still set data to empty state so app can boot
         if (isComponentMounted) {
+          setHasPersistedWallet(false);
           setPatient(null);
           setRecords([]);
           setDocuments([]);
@@ -143,13 +157,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     records?: Record[];
     documents?: Document[];
   }) => {
+    const existingWallet = await storage.getWallet();
     const wallet: Wallet = {
-      patient: updates.patient ?? patient!,
+      patient: updates.patient ?? patient ?? null,
       records: updates.records ?? records,
       documents: updates.documents ?? (Array.isArray(documents) ? documents : []),
-      shares: (await storage.getWallet())?.shares || {},
+      shares: existingWallet?.shares || {},
+      preferences: existingWallet?.preferences || {},
     };
     await storage.setWallet(wallet);
+  };
+
+  const createEmptyWallet = async () => {
+    const wallet = await storage.createEmptyWallet();
+    setHasPersistedWallet(true);
+    setPatient(wallet.patient);
+    setRecords(wallet.records);
+    setDocuments(wallet.documents);
   };
 
   // Patient actions
@@ -158,6 +182,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ...updatedPatient,
       updatedAt: Date.now(),
     };
+    setHasPersistedWallet(true);
     setPatient(patientWithTimestamp);
     await persistWallet({ patient: patientWithTimestamp });
   };
@@ -601,17 +626,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await storage.deleteShare(shareId);
   };
 
-  // Reset to demo data
-  const resetToDemo = async () => {
-    const wallet = await storage.resetToDemoData();
-    setPatient(wallet.patient);
-    setRecords(wallet.records);
-    setDocuments(wallet.documents);
+  // Reset to true first-run state (no wallet persisted)
+  const resetWallet = async () => {
+    await storage.resetWalletData();
+    setHasPersistedWallet(false);
+    setPatient(null);
+    setRecords([]);
+    setDocuments([]);
   };
 
   const exportWalletBackup = async () => {
     const wallet = await storage.getWallet();
-    if (!wallet) {
+    if (!wallet || !wallet.patient) {
       throw new Error("No wallet data available to export.");
     }
 
@@ -629,6 +655,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     try {
       await storage.setWallet(importedWallet);
+      setHasPersistedWallet(true);
       setPatient(importedWallet.patient);
       setRecords(importedWallet.records);
       setDocuments(importedWallet.documents);
@@ -636,9 +663,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Roll back previous wallet if restore fails after clear.
       if (previousWallet) {
         await storage.setWallet(previousWallet);
+        setHasPersistedWallet(true);
         setPatient(previousWallet.patient);
         setRecords(previousWallet.records);
         setDocuments(previousWallet.documents);
+      } else {
+        setHasPersistedWallet(false);
+        setPatient(null);
+        setRecords([]);
+        setDocuments([]);
       }
       throw error;
     }
@@ -649,6 +682,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     records,
     documents,
     loading,
+    hasPersistedWallet,
     updatePatient,
     addRecord,
     updateRecord,
@@ -666,7 +700,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     getAllShares,
     deleteShare,
     revokeShare,
-    resetToDemo,
+    createEmptyWallet,
+    resetWallet,
     exportWalletBackup,
     importWalletBackup,
   };
@@ -681,3 +716,9 @@ export function useApp() {
   }
   return context;
 }
+
+
+
+
+
+

@@ -165,8 +165,9 @@ export type Share = {
 
 // Single wallet object for atomic persistence
 export type Wallet = {
-  patient: Patient;
+  patient: Patient | null;
   records: Record[];
   documents: Document[];
   shares: { [shareId: string]: Share };
+  preferences: { [key: string]: unknown };
 };

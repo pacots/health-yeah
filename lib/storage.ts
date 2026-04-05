@@ -1,9 +1,46 @@
 import localforage from "localforage";
 import { Patient, Record, Document, Share, Wallet } from "./types";
-import { generateDemoData } from "./demo-data";
+
+const STORAGE_TIMEOUT_MS = 5000;
 
 // Initialize localforage with error handling
 let isLocalforageReady = false;
+let inMemoryWallet: Wallet | null = null;
+
+function createEmptyWalletState(): Wallet {
+  return {
+    patient: null,
+    records: [],
+    documents: [],
+    shares: {},
+    preferences: {},
+  };
+}
+
+function normalizeWallet(wallet: Wallet): Wallet {
+  return {
+    patient: wallet.patient ?? null,
+    records: Array.isArray(wallet.records) ? wallet.records : [],
+    documents: Array.isArray(wallet.documents) ? wallet.documents : [],
+    shares: wallet.shares && typeof wallet.shares === "object" ? wallet.shares : {},
+    preferences: wallet.preferences && typeof wallet.preferences === "object" ? wallet.preferences : {},
+  };
+}
+
+function withTimeout<T>(promise: Promise<T>, errorMessage: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(errorMessage)), STORAGE_TIMEOUT_MS);
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
 
 const initLocalforage = async () => {
   if (isLocalforageReady) return;
@@ -19,11 +56,9 @@ const initLocalforage = async () => {
     console.log("[Storage] Localforage initialized");
   } catch (error) {
     console.error("[Storage] Failed to initialize localforage:", error);
-    // Continue anyway - may work on retry
   }
 };
 
-// Initialize immediately
 if (typeof window !== "undefined") {
   initLocalforage().catch(console.error);
 }
@@ -31,220 +66,125 @@ if (typeof window !== "undefined") {
 const WALLET_KEY = "wallet";
 
 export const storage = {
-  // Single wallet persistence (atomic)
   async setWallet(wallet: Wallet): Promise<void> {
+    const normalized = normalizeWallet(wallet);
+    inMemoryWallet = normalized;
+
     try {
       await initLocalforage();
-      await localforage.setItem(WALLET_KEY, wallet);
+      await withTimeout(localforage.setItem(WALLET_KEY, normalized), "Saving wallet timed out");
     } catch (error) {
-      console.error("[Storage] Failed to save wallet:", error);
-      throw error;
+      console.warn("[Storage] Persist failed, using in-memory wallet:", error);
     }
   },
 
   async getWallet(): Promise<Wallet | null> {
     try {
       await initLocalforage();
-      return (await localforage.getItem(WALLET_KEY)) as Wallet | null;
+      const raw = (await withTimeout(localforage.getItem(WALLET_KEY), "Loading wallet timed out")) as Wallet | null;
+      if (!raw) {
+        return inMemoryWallet;
+      }
+
+      const normalized = normalizeWallet(raw);
+      inMemoryWallet = normalized;
+      return normalized;
     } catch (error) {
-      console.error("[Storage] Failed to load wallet:", error);
-      // Return null instead of throwing - may be a temporary IndexedDB issue
+      console.warn("[Storage] Read failed, using in-memory wallet:", error);
+      return inMemoryWallet;
+    }
+  },
+
+  async initializeWallet(): Promise<Wallet | null> {
+    try {
+      const existing = await this.getWallet();
+      return existing ? normalizeWallet(existing) : null;
+    } catch (error) {
+      console.warn("[Storage] initializeWallet fallback to empty state:", error);
       return null;
     }
   },
 
-  // Initialize wallet on first load
-  async initializeWallet(): Promise<Wallet> {
-    try {
-      await initLocalforage();
-
-      // Check if wallet already exists
-      const existing = await this.getWallet();
-      if (existing) {
-        console.log("[Storage] Loaded existing wallet");
-        return existing;
-      }
-
-      // No existing wallet, create with demo data
-      console.log("[Storage] Creating new wallet with demo data");
-      const { patient, records, documents } = generateDemoData();
-      const wallet: Wallet = {
-        patient,
-        records,
-        documents,
-        shares: {},
-      };
-
-      await this.setWallet(wallet);
-      console.log("[Storage] Wallet created and saved");
-      return wallet;
-    } catch (error) {
-      console.error("[Storage] Failed to initialize wallet:", error);
-
-      // Fallback: Create wallet in memory if IndexedDB fails
-      console.warn("[Storage] Using in-memory wallet as fallback (no persistence)");
-      const { patient, records, documents } = generateDemoData();
-      return {
-        patient,
-        records,
-        documents,
-        shares: {},
-      };
-    }
+  async createEmptyWallet(): Promise<Wallet> {
+    const wallet = createEmptyWalletState();
+    await this.setWallet(wallet);
+    return wallet;
   },
 
-  // Legacy API for backward compatibility (maps to wallet)
   async setPatient(patient: Patient): Promise<void> {
-    try {
-      const wallet = await this.getWallet();
-      if (wallet) {
-        wallet.patient = patient;
-        await this.setWallet(wallet);
-      }
-    } catch (error) {
-      console.error("[Storage] Failed to set patient:", error);
-    }
+    const wallet = (await this.getWallet()) ?? createEmptyWalletState();
+    wallet.patient = patient;
+    await this.setWallet(wallet);
   },
 
   async getPatient(): Promise<Patient | null> {
-    try {
-      const wallet = await this.getWallet();
-      return wallet?.patient || null;
-    } catch (error) {
-      console.error("[Storage] Failed to get patient:", error);
-      return null;
-    }
+    const wallet = await this.getWallet();
+    return wallet?.patient || null;
   },
 
   async setRecords(records: Record[]): Promise<void> {
-    try {
-      const wallet = await this.getWallet();
-      if (wallet) {
-        wallet.records = records;
-        await this.setWallet(wallet);
-      }
-    } catch (error) {
-      console.error("[Storage] Failed to set records:", error);
-    }
+    const wallet = (await this.getWallet()) ?? createEmptyWalletState();
+    wallet.records = records;
+    await this.setWallet(wallet);
   },
 
   async getRecords(): Promise<Record[]> {
-    try {
-      const wallet = await this.getWallet();
-      return wallet?.records || [];
-    } catch (error) {
-      console.error("[Storage] Failed to get records:", error);
-      return [];
-    }
+    const wallet = await this.getWallet();
+    return wallet?.records || [];
   },
 
   async setDocuments(documents: Document[]): Promise<void> {
-    try {
-      const wallet = await this.getWallet();
-      if (wallet) {
-        wallet.documents = documents;
-        await this.setWallet(wallet);
-      }
-    } catch (error) {
-      console.error("[Storage] Failed to set documents:", error);
-    }
+    const wallet = (await this.getWallet()) ?? createEmptyWalletState();
+    wallet.documents = documents;
+    await this.setWallet(wallet);
   },
 
   async getDocuments(): Promise<Document[]> {
-    try {
-      const wallet = await this.getWallet();
-      return wallet?.documents || [];
-    } catch (error) {
-      console.error("[Storage] Failed to get documents:", error);
-      return [];
-    }
+    const wallet = await this.getWallet();
+    return wallet?.documents || [];
   },
 
   async setShare(share: Share): Promise<void> {
-    try {
-      const wallet = await this.getWallet();
-      if (wallet) {
-        wallet.shares[share.id] = share;
-        await this.setWallet(wallet);
-      }
-    } catch (error) {
-      console.error("[Storage] Failed to set share:", error);
-    }
+    const wallet = (await this.getWallet()) ?? createEmptyWalletState();
+    wallet.shares[share.id] = share;
+    await this.setWallet(wallet);
   },
 
   async getShare(shareId: string): Promise<Share | null> {
-    try {
-      const wallet = await this.getWallet();
-      return wallet?.shares[shareId] || null;
-    } catch (error) {
-      console.error("[Storage] Failed to get share:", error);
-      return null;
-    }
+    const wallet = await this.getWallet();
+    return wallet?.shares[shareId] || null;
   },
 
   async getAllShares(): Promise<Share[]> {
-    try {
-      const wallet = await this.getWallet();
-      return wallet ? Object.values(wallet.shares) : [];
-    } catch (error) {
-      console.error("[Storage] Failed to get all shares:", error);
-      return [];
-    }
+    const wallet = await this.getWallet();
+    return wallet ? Object.values(wallet.shares) : [];
   },
 
   async deleteShare(shareId: string): Promise<void> {
-    try {
-      const wallet = await this.getWallet();
-      if (wallet) {
-        delete wallet.shares[shareId];
-        await this.setWallet(wallet);
-      }
-    } catch (error) {
-      console.error("[Storage] Failed to delete share:", error);
+    const wallet = await this.getWallet();
+    if (wallet) {
+      delete wallet.shares[shareId];
+      await this.setWallet(wallet);
     }
   },
 
-  // Utility: clear all data (for development)
   async clear(): Promise<void> {
+    inMemoryWallet = null;
     try {
       await initLocalforage();
-      await localforage.clear();
+      await withTimeout(localforage.clear(), "Clearing wallet timed out");
       console.log("[Storage] Cleared all data");
     } catch (error) {
-      console.error("[Storage] Failed to clear storage:", error);
+      console.warn("[Storage] Clear failed:", error);
     }
   },
 
-  // Reset wallet to demo data
-  async resetToDemoData(): Promise<Wallet> {
-    try {
-      await this.clear();
-      const { patient, records, documents } = generateDemoData();
-      const wallet: Wallet = {
-        patient,
-        records,
-        documents,
-        shares: {},
-      };
-      await this.setWallet(wallet);
-      console.log("[Storage] Reset to demo data");
-      return wallet;
-    } catch (error) {
-      console.error("[Storage] Failed to reset to demo data:", error);
-      // Return in-memory wallet as fallback
-      const { patient, records, documents } = generateDemoData();
-      return {
-        patient,
-        records,
-        documents,
-        shares: {},
-      };
-    }
+  async resetWalletData(): Promise<void> {
+    await this.clear();
+    console.log("[Storage] Wallet reset to empty state");
   },
 };
 
-// Helper: Generate short ID for shares
 export function generateShareId(): string {
   return Math.random().toString(36).substring(2, 9);
 }
-
