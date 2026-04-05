@@ -311,13 +311,44 @@ function DocumentDetailModal({
   };
 
   const handleDownload = () => {
-    if (doc.kind === "file" && doc.id) {
-      const link = document.createElement("a");
-      link.href = `/api/documents/${doc.id}/file`;
-      link.download = doc.fileName || "document";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    if (doc.kind === "file" && doc.fileContent) {
+      try {
+        // Decode file content from base64
+        let blobData: ArrayBuffer;
+
+        if (doc.fileContent.startsWith("data:")) {
+          // data URL format - extract base64 part
+          const base64Data = doc.fileContent.split(",")[1];
+          const binaryString = atob(base64Data);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          blobData = bytes.buffer;
+        } else {
+          // plain base64
+          const binaryString = atob(doc.fileContent);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          blobData = bytes.buffer;
+        }
+
+        // Create blob and download
+        const blob = new Blob([blobData], { type: doc.mimeType || "application/octet-stream" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = doc.fileName || "document";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error("Failed to download file:", error);
+        alert("Failed to download file");
+      }
     }
   };
 

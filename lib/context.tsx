@@ -172,6 +172,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const updatedDocuments = [...documents, newDocument];
         setDocuments(updatedDocuments);
         await persistWallet({ documents: updatedDocuments });
+
+        // Trigger AI processing asynchronously (fire-and-forget)
+        triggerAIProcessingAsync(newDocument, updatedDocuments);
+
         return newDocument;
       } else {
         // Text document
@@ -195,12 +199,48 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const updatedDocuments = [...documents, newDocument];
         setDocuments(updatedDocuments);
         await persistWallet({ documents: updatedDocuments });
+
+        // Trigger AI processing asynchronously (fire-and-forget)
+        triggerAIProcessingAsync(newDocument, updatedDocuments);
+
         return newDocument;
       }
     } catch (error) {
       console.error("Failed to create document:", error);
       throw error;
     }
+  };
+
+  // Helper: Trigger AI processing asynchronously
+  const triggerAIProcessingAsync = (newDocument: Document, docList: Document[]) => {
+    // Fire-and-forget: don't wait for response, but fetch updates
+    const processAI = async () => {
+      try {
+        const response = await fetch(`/api/documents/${newDocument.id}/summarize`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newDocument),
+        });
+
+        if (!response.ok) {
+          console.warn("AI processing failed:", await response.text());
+          return;
+        }
+
+        const updatedDocument = await response.json();
+
+        // Update wallet with AI summary results
+        const updatedDocs = docList.map((d) =>
+          d.id === updatedDocument.id ? updatedDocument : d
+        );
+        setDocuments(updatedDocs);
+        await persistWallet({ documents: updatedDocs });
+      } catch (error) {
+        console.error("Failed to process AI for document:", error);
+      }
+    };
+
+    processAI();
   };
 
   const updateDocument = async (updatedDocument: Document) => {

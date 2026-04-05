@@ -80,11 +80,12 @@ export type Record = AllergyRecord | MedicationRecord | ConditionRecord;
 /**
  * Document record - supports both text and file documents
  *
- * Designed to support future linking with medical history entries.
- * linkedMedicalHistoryIds allows associating documents with specific medical records.
+ * Storage is LOCAL-FIRST via IndexedDB (localforage), not server filesystem.
+ * All document data persists in the browser's local storage.
  *
  * - kind: 'text' means only textContent is populated
- * - kind: 'file' means fileName, mimeType, extension, fileSizeBytes, localPath are populated
+ * - kind: 'file' means fileName, mimeType, fileContent (base64/data URL) are populated
+ * - fileContent: Base64-encoded or data URL representation of file for local storage
  * - aiStructuredSummary: AI-generated summary (automatic, server-side)
  * - aiSummaryStatus: 'processing' | 'ready' | 'error'
  */
@@ -102,6 +103,9 @@ export type Document = {
   mimeType?: string;
   extension?: string;
   fileSizeBytes?: number;
+  // File content stored as base64 or data URL (for local-first storage)
+  fileContent?: string;
+  // Legacy: localPath no longer used (was for filesystem storage)
   localPath?: string;
 
   // Timestamps (ISO 8601 format)
