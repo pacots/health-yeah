@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllDocuments, createDocument } from "@/lib/document-storage";
-import { triggerAIProcessing } from "@/lib/document-ai";
+import { Document } from "@/lib/types";
 
 /**
  * GET /api/documents
- * List all documents
+ * Returns empty list - documents are stored client-side in wallet
  */
 export async function GET() {
   try {
-    const documents = getAllDocuments();
-    return NextResponse.json(documents);
+    // Documents are loaded from wallet, not from server
+    // This endpoint is kept for consistency but returns empty
+    return NextResponse.json([]);
   } catch (error) {
     console.error("Failed to get documents:", error);
     return NextResponse.json({ error: "Failed to get documents" }, { status: 500 });
@@ -26,52 +26,101 @@ export async function GET() {
  * For file documents, send multipart/form-data:
  * - file: <binary>
  * - title: "..."
- * - description: "..." (optional)
- * - category: "..." (optional)
  *
- * Rules:
- * - title is required
- * - Either textContent OR file must be provided (XOR)
- * - Not both
+ * Response: Document object with file content encoded as base64
  *
- * AI Processing:
- * - AI summary generation is triggered asynchronously after document creation
- * - Returns document with aiSummaryStatus: "processing"
- * - Summary will be available after processing completes (check document again)
+ * Process:
+ * 1. API processes and converts file to base64
+ * 2. Returns document object
+ * 3. Client context persists entire document to wallet
+ * 4. AI processing triggered asynchronously (non-blocking)
  */
 export async function POST(request: NextRequest) {
   try {
     const contentType = request.headers.get("content-type") || "";
+    const id = Math.random().toString(36).substring(2, 11);
+    const now = new Date().toISOString();
 
-    let id = Math.random().toString(36).substring(2, 11);
-    let title: string;
-    let textContent: string | undefined;
-    let fileName: string | undefined;
-    let mimeType: string | undefined;
-    let fileBuffer: Buffer | undefined;
-    let description: string | undefined;
-    let category: string | undefined;
+    let document: Document;
 
     if (contentType.includes("application/json")) {
       // Text document via JSON
       const body = await request.json();
-      title = body.title;
-      textContent = body.textContent;
-      description = body.description;
-      category = body.category;
+      const { title, textContent, description, category } = body;
+
+      if (!title?.trim()) {
+        return NextResponse.json(
+          { error: "Title is required" },
+          { status: 400 }
+        );
+      }
+
+      if (!textContent?.trim()) {
+        return NextResponse.json(
+          { error: "Text content is required" },
+          { status: 400 }
+        );
+      }
+
+      document = {
+        id,
+        title: title.trim(),
+        kind: "text",
+        textContent: textContent.trim(),
+        description,
+        category: category as any,
+        createdAt: now,
+        updatedAt: now,
+        aiSummaryStatus: "processing",
+      };
     } else if (contentType.includes("multipart/form-data")) {
       // File document via multipart
       const formData = await request.formData();
       const file = formData.get("file") as File;
-      title = (formData.get("title") as string) || "";
-      description = (formData.get("description") as string) || undefined;
-      category = (formData.get("category") as string) || undefined;
+      const title = (formData.get("title") as string)?.trim();
 
-      if (file && file.size > 0) {
-        fileName = file.name;
-        mimeType = file.type;
-        fileBuffer = Buffer.from(await file.arrayBuffer());
+      if (!title) {
+        return NextResponse.json(
+          { error: "Title is required" },
+          { status: 400 }
+        );
       }
+
+      if (!file || file.size === 0) {
+        return NextResponse.json(
+          { error: "File is required" },
+          { status: 400 }
+        );
+      }
+
+      // Convert file to base64 for client-side storage
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const fileContent = buffer.toString("base64");
+
+      // Extract file extension
+      const mimeType = file.type;
+      const extensions: { [key: string]: string } = {
+        "application/pdf": ".pdf",
+        "image/jpeg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+        "image/heic": ".heic",
+      };
+      const extension = extensions[mimeType] || ".bin";
+
+      document = {
+        id,
+        title,
+        kind: "file",
+        fileName: file.name,
+        mimeType,
+        extension,
+        fileSizeBytes: buffer.length,
+        fileContent, // Base64-encoded file content
+        createdAt: now,
+        updatedAt: now,
+        aiSummaryStatus: "processing",
+      };
     } else {
       return NextResponse.json(
         { error: "Content-Type must be application/json or multipart/form-data" },
@@ -79,25 +128,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create document with unified validation
-    const doc = createDocument({
-      id,
-      title,
-      textContent,
-      fileName,
-      mimeType,
-      fileBuffer,
-      description,
-      category,
-    });
-
-    // Trigger AI processing asynchronously (non-blocking)
-    // Uses fire-and-forget pattern with try-catch to prevent errors from reaching client
-    triggerAIProcessing(doc).catch((error) => {
-      console.error("Background AI processing failed for document", id, ":", error);
-    });
-
-    return NextResponse.json(doc, { status: 201 });
+    return NextResponse.json(document, { status: 201 });
   } catch (error) {
     console.error("Failed to create document:", error);
     return NextResponse.json(
@@ -106,3 +137,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

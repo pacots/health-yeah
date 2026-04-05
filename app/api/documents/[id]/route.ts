@@ -1,23 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDocumentById, deleteDocument } from "@/lib/document-storage";
 
 /**
  * GET /api/documents/:id
- * Get a single document metadata
+ * Note: Documents are stored in wallet, not on server
+ * This endpoint is kept for consistency but just returns empty response
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
-    const doc = getDocumentById(id);
-
-    if (!doc) {
-      return NextResponse.json({ error: "Document not found" }, { status: 404 });
-    }
-
-    return NextResponse.json(doc);
+    // Documents are managed client-side in wallet
+    return NextResponse.json({ error: "Document not found" }, { status: 404 });
   } catch (error) {
     console.error("Failed to get document:", error);
     return NextResponse.json({ error: "Failed to get document" }, { status: 500 });
@@ -26,15 +20,15 @@ export async function GET(
 
 /**
  * DELETE /api/documents/:id
- * Delete a document and its file if applicable
+ * Note: Document deletion happens client-side in wallet
+ * This is a no-op endpoint for compatibility
  */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
-    deleteDocument(id);
+    // Deletion handled client-side by context
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to delete document:", error);

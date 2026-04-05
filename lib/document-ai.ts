@@ -1,8 +1,6 @@
 import { Document } from "./types";
 import { generateDocumentSummary, generateImageSummary } from "./openai";
-import { updateDocumentWithAISummary, readFile } from "./document-storage";
-import fs from "fs";
-import path from "path";
+import { documentStorage } from "./document-local-storage";
 // @ts-ignore - pdf-parse doesn't have TypeScript definitions
 import pdfParse from "pdf-parse";
 
@@ -20,15 +18,12 @@ async function extractTextFromPDF(buffer: Buffer): Promise<string> {
 }
 
 /**
- * Convert image file to base64
- */
-function fileToBase64(buffer: Buffer): string {
-  return buffer.toString("base64");
-}
-
-/**
  * Trigger AI processing for a document
  * This is called asynchronously after document creation
+ *
+ * Reads document content from local storage (IndexedDB)
+ * Processes with OpenAI
+ * Writes result back to local storage
  */
 export async function triggerAIProcessing(document: Document): Promise<void> {
   try {
@@ -37,27 +32,39 @@ export async function triggerAIProcessing(document: Document): Promise<void> {
     // Extract content based on document type
     if (document.kind === "text") {
       contentToProcess = document.textContent || "";
-    } else if (document.kind === "file" && document.localPath) {
-      // Read file from disk
-      const fileBuffer = readFile(document.id);
-      if (!fileBuffer) {
-        throw new Error("File not found or unable to read");
+    } else if (document.kind === "file" && document.fileContent) {
+      // fileContent is base64-encoded or data URL
+      let buffer: Buffer;
+
+      if (document.fileContent.startsWith("data:")) {
+        // data URL format - extract base64 part
+        const base64Data = document.fileContent.split(",")[1];
+        buffer = Buffer.from(base64Data, "base64");
+      } else {
+        // plain base64
+        buffer = Buffer.from(document.fileContent, "base64");
       }
 
       if (document.mimeType === "application/pdf") {
         // Extract text from PDF
-        contentToProcess = await extractTextFromPDF(fileBuffer);
-      } else if (
-        document.mimeType?.startsWith("image/")
-      ) {
+        contentToProcess = await extractTextFromPDF(buffer);
+      } else if (document.mimeType?.startsWith("image/")) {
         // Handle images with vision API
-        const base64Image = fileToBase64(fileBuffer);
+        // For images, send base64 directly
+        const base64Image = document.fileContent.includes(",")
+          ? document.fileContent.split(",")[1]
+          : document.fileContent;
+
         const summary = await generateImageSummary(base64Image, document.title);
 
         if (summary) {
-          updateDocumentWithAISummary(document.id, summary, "ready");
+          await documentStorage.updateDocumentWithAISummary(
+            document.id,
+            summary,
+            "ready"
+          );
         } else {
-          updateDocumentWithAISummary(
+          await documentStorage.updateDocumentWithAISummary(
             document.id,
             null,
             "error",
@@ -77,9 +84,13 @@ export async function triggerAIProcessing(document: Document): Promise<void> {
       );
 
       if (summary) {
-        updateDocumentWithAISummary(document.id, summary, "ready");
+        await documentStorage.updateDocumentWithAISummary(
+          document.id,
+          summary,
+          "ready"
+        );
       } else {
-        updateDocumentWithAISummary(
+        await documentStorage.updateDocumentWithAISummary(
           document.id,
           null,
           "error",
@@ -87,7 +98,7 @@ export async function triggerAIProcessing(document: Document): Promise<void> {
         );
       }
     } else {
-      updateDocumentWithAISummary(
+      await documentStorage.updateDocumentWithAISummary(
         document.id,
         null,
         "error",
@@ -96,7 +107,7 @@ export async function triggerAIProcessing(document: Document): Promise<void> {
     }
   } catch (error) {
     console.error("Error processing document for AI summary:", error);
-    updateDocumentWithAISummary(
+    await documentStorage.updateDocumentWithAISummary(
       document.id,
       null,
       "error",
@@ -104,3 +115,4 @@ export async function triggerAIProcessing(document: Document): Promise<void> {
     );
   }
 }
+
