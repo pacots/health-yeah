@@ -7,10 +7,16 @@ import { SourceBadge, LastUpdated } from "@/lib/metadata-badges";
 import Link from "next/link";
 
 export default function MedicationsPage() {
-  const { records, addRecord, deleteRecord } = useApp();
+  const { records, addRecord, updateRecord, deleteRecord } = useApp();
   const [showForm, setShowForm] = useState(false);
+  const [editingMedication, setEditingMedication] = useState<MedicationRecord | null>(null);
 
   const medications = records.filter((r) => r.type === "medication") as MedicationRecord[];
+
+  const handleEditMedication = (medication: MedicationRecord) => {
+    setEditingMedication(medication);
+    setShowForm(true);
+  };
 
   return (
     <div className="page-container">
@@ -24,7 +30,10 @@ export default function MedicationsPage() {
             <h1 className="page-title">Medications</h1>
             <p className="page-subtitle">Your current medications and supplements</p>
           </div>
-          <button onClick={() => setShowForm(true)} className="btn-primary btn-sm whitespace-nowrap flex-shrink-0">
+          <button onClick={() => {
+            setEditingMedication(null);
+            setShowForm(true);
+          }} className="btn-primary btn-sm whitespace-nowrap flex-shrink-0">
             + Add Medication
           </button>
         </div>
@@ -32,10 +41,22 @@ export default function MedicationsPage() {
         {/* Form Modal */}
         {showForm && (
           <MedicationForm
-            onClose={() => setShowForm(false)}
-            onSave={async (data) => {
-              await addRecord(data);
+            medication={editingMedication}
+            onClose={() => {
               setShowForm(false);
+              setEditingMedication(null);
+            }}
+            onSave={async (data) => {
+              if (editingMedication) {
+                await updateRecord({
+                  ...editingMedication,
+                  ...data,
+                });
+              } else {
+                await addRecord(data);
+              }
+              setShowForm(false);
+              setEditingMedication(null);
             }}
           />
         )}
@@ -72,12 +93,20 @@ export default function MedicationsPage() {
                       <LastUpdated timestamp={med.updatedAt} />
                     </div>
                   </div>
-                  <button
-                    onClick={() => deleteRecord(med.id)}
-                    className="btn-danger btn-sm text-sm whitespace-nowrap flex-shrink-0 mt-3 sm:mt-0"
-                  >
-                    Delete
-                  </button>
+                  <div className="flex flex-col gap-2 mt-3 sm:mt-0">
+                    <button
+                      onClick={() => handleEditMedication(med)}
+                      className="btn-secondary btn-sm text-sm whitespace-nowrap flex-shrink-0"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => deleteRecord(med.id)}
+                      className="btn-danger btn-sm text-sm whitespace-nowrap flex-shrink-0"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -89,17 +118,19 @@ export default function MedicationsPage() {
 }
 
 function MedicationForm({
+  medication,
   onClose,
   onSave,
 }: {
+  medication?: MedicationRecord | null;
   onClose: () => void;
   onSave: (data: any) => Promise<void>;
 }) {
-  const [name, setName] = useState("");
-  const [dosage, setDosage] = useState("");
-  const [frequency, setFrequency] = useState("");
-  const [indication, setIndication] = useState("");
-  const [notes, setNotes] = useState("");
+  const [name, setName] = useState(medication?.name || "");
+  const [dosage, setDosage] = useState(medication?.dosage || "");
+  const [frequency, setFrequency] = useState(medication?.frequency || "");
+  const [indication, setIndication] = useState(medication?.indication || "");
+  const [notes, setNotes] = useState(medication?.notes || "");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -109,12 +140,14 @@ function MedicationForm({
     setLoading(true);
     try {
       await onSave({
+        ...(medication ? { id: medication.id, createdAt: medication.createdAt } : {}),
         type: "medication",
         name,
         dosage,
         frequency,
         indication: indication || undefined,
-        source: "self-reported",
+        source: medication?.source || "self-reported",
+        linkedDocumentIds: medication?.linkedDocumentIds,
         notes: notes || undefined,
       });
     } finally {
@@ -125,7 +158,9 @@ function MedicationForm({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Add Medication</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          {medication ? 'Edit Medication' : 'Add Medication'}
+        </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="label">Medication Name *</label>

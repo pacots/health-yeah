@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Document, ConditionRecord, DocumentConditionSuggestion } from "@/lib/types";
+import { Document, EntityMatchResult, ConditionRecord, AllergyRecord, MedicationRecord } from "@/lib/types";
 import { useApp } from "@/lib/context";
 
 interface DocumentSuggestionsProps {
@@ -10,84 +10,48 @@ interface DocumentSuggestionsProps {
 }
 
 export function DocumentSuggestions({ document, onClose }: DocumentSuggestionsProps) {
-  const { records, linkDocumentToExistingCondition, createNewConditionFromSuggestion, dismissConditionSuggestion, acceptConditionSuggestionWithManualSelect } = useApp();
+  const { records, processEntityMatch } = useApp();
   const [processing, setProcessing] = useState<string | null>(null);
-  const [manualSelectIndex, setManualSelectIndex] = useState<number | null>(null);
-  const [selectedConditionId, setSelectedConditionId] = useState<string | null>(null);
 
-  const suggestions = document.aiConditionSuggestions || [];
-  const pendingSuggestions = suggestions.filter((s) => !s.reviewed);
+  // Use new unified entity matches, fallback to legacy condition suggestions
+  const matches = document.aiEntityMatches || [];
+  const pendingMatches = matches.filter((m) => !m.reviewed);
 
-  if (pendingSuggestions.length === 0) {
+  if (pendingMatches.length === 0) {
     return null;
   }
 
-  // Get existing conditions for matching
-  const existingConditions = records.filter(
-    (r) => r.type === "condition" && r.status === "active"
-  ) as ConditionRecord[];
+  // Helper: Get entity name for display
+  const getEntityName = (match: EntityMatchResult): string => {
+    return match.type.charAt(0).toUpperCase() + match.type.slice(1);
+  };
 
-  // For lookup purposes, include all conditions (not just active)
-  const allConditions = records.filter(
-    (r) => r.type === "condition"
-  ) as ConditionRecord[];
-
-  const handleLinkExisting = async (suggestion: DocumentConditionSuggestion, suggestionIndex: number) => {
-    if (!suggestion.matchedConditionId) return;
-
-    try {
-      setProcessing(suggestion.conditionName);
-      await linkDocumentToExistingCondition(document.id, suggestion.matchedConditionId);
-      
-      // Mark suggestion as accepted
-      const actualIndex = suggestions.indexOf(suggestion);
-      await acceptConditionSuggestionWithManualSelect(document.id, actualIndex, suggestion.matchedConditionId);
-    } catch (error) {
-      console.error("Failed to link condition:", error);
-    } finally {
-      setProcessing(null);
+  // Helper: Get existing entity of a type for display
+  const getExistingEntity = (id: string, type: string) => {
+    if (type === 'condition') {
+      return records.find((r) => r.type === 'condition' && r.id === id) as ConditionRecord | undefined;
+    } else if (type === 'allergy') {
+      return records.find((r) => r.type === 'allergy' && r.id === id) as AllergyRecord | undefined;
+    } else {
+      return records.find((r) => r.type === 'medication' && r.id === id) as MedicationRecord | undefined;
     }
   };
 
-  const handleCreateNew = async (suggestion: DocumentConditionSuggestion) => {
-    try {
-      setProcessing(suggestion.conditionName);
-      await createNewConditionFromSuggestion(suggestion, document.id);
-      
-      // Mark suggestion as accepted
-      const actualIndex = suggestions.indexOf(suggestion);
-      const newConditionSuggestions = document.aiConditionSuggestions || [];
-      const newConditionId = newConditionSuggestions[actualIndex]?.matchedConditionId;
-      
-      // The accepts are already handled in the create/link methods, but mark as reviewed
-      // by marking the suggestion as accepted in the UI
-    } catch (error) {
-      console.error("Failed to create condition:", error);
-    } finally {
-      setProcessing(null);
-    }
+  // Helper: Get entity display name
+  const getEntityDisplayName = (entity: any, type: string): string => {
+    if (type === 'condition') return (entity as ConditionRecord).name;
+    if (type === 'allergy') return (entity as AllergyRecord).allergen;
+    return (entity as MedicationRecord).name;
   };
 
-  const handleManualSelect = async (suggestion: DocumentConditionSuggestion, suggestionIndex: number, conditionId: string) => {
+  const handleAction = async (matchIndex: number, action: 'link' | 'dismiss' | 'create') => {
     try {
-      setProcessing(`${suggestion.conditionName}-manual`);
-      const actualIndex = suggestions.indexOf(suggestion);
-      await acceptConditionSuggestionWithManualSelect(document.id, actualIndex, conditionId);
-      setManualSelectIndex(null);
-      setSelectedConditionId(null);
+      setProcessing(`${matchIndex}-${action}`);
+      await processEntityMatch(document.id, matchIndex, action);
     } catch (error) {
-      console.error("Failed to link document to condition:", error);
+      console.error(`Failed to ${action} entity match:`, error);
     } finally {
       setProcessing(null);
-    }
-  };
-
-  const handleDismiss = async (suggestion: DocumentConditionSuggestion) => {
-    try {
-      const actualIndex = suggestions.indexOf(suggestion);
-      await dismissConditionSuggestion(document.id, actualIndex);
-    } catch (error) {
-      console.error("Failed to dismiss suggestion:", error);
     }
   };
 
@@ -97,9 +61,9 @@ export function DocumentSuggestions({ document, onClose }: DocumentSuggestionsPr
         <div className="p-6">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">AI Suggestions</h2>
+              <h2 className="text-xl font-semibold text-gray-900">AI Entity Matches</h2>
               <p className="text-sm text-gray-600 mt-1">
-                Found {pendingSuggestions.length} condition{pendingSuggestions.length !== 1 ? "s" : ""} related to "{document.title}"
+                Found {pendingMatches.length} entit{pendingMatches.length !== 1 ? "ies" : "y"} in "{document.title}"
               </p>
             </div>
             {onClose && (
@@ -113,128 +77,95 @@ export function DocumentSuggestions({ document, onClose }: DocumentSuggestionsPr
           </div>
 
           <div className="space-y-4">
-            {pendingSuggestions.map((suggestion, idx) => {
-              const actualIndex = suggestions.indexOf(suggestion);
-              const isUnmatched = suggestion.type === "create-new" || !suggestion.matchedConditionId;
-              const matchedCondition =
-                !isUnmatched && suggestion.matchedConditionId
-                  ? allConditions.find((c) => c.id === suggestion.matchedConditionId)
-                  : null;
-              const isShowingManualSelect = manualSelectIndex === actualIndex;
+            {pendingMatches.map((match, idx) => {
+              const isProcessing = processing === `${idx}-link` || processing === `${idx}-create`;
+              const existingEntity = match.action === 'link-existing' && match.matchedId
+                ? getExistingEntity(match.matchedId, match.type)
+                : null;
 
               return (
                 <div
-                  key={actualIndex}
+                  key={idx}
                   className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-900">
-                        {suggestion.conditionName}
+                  {/* Entity Type Badge + Title */}
+                  <div className="flex items-start gap-2 mb-3">
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${
+                      match.type === 'condition' ? 'bg-blue-100 text-blue-700' :
+                      match.type === 'allergy' ? 'bg-orange-100 text-orange-700' :
+                      'bg-green-100 text-green-700'
+                    }`}>
+                      {getEntityName(match)}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-gray-900 break-words">
+                        {match.extractedName}
                       </h3>
-                      {suggestion.reason && (
-                        <p className="text-sm text-gray-600 mt-1">
-                          {suggestion.reason}
+                      {match.extractedName !== match.finalName && (
+                        <p className="text-sm text-gray-500">
+                          → <span className="font-medium">{match.finalName}</span>
                         </p>
                       )}
-                      <div className="flex items-center gap-2 mt-2">
-                        <div className="flex-1 bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                          <div
-                            className="bg-blue-500 h-full transition-all"
-                            style={{ width: `${Math.round(suggestion.confidence * 100)}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-gray-600 whitespace-nowrap">
-                          {Math.round(suggestion.confidence * 100)}% confidence
-                        </span>
-                      </div>
                     </div>
                   </div>
 
-                  {/* Manual Select Dropdown */}
-                  {isShowingManualSelect ? (
-                    <div className="mt-4 space-y-2">
-                      <p className="text-xs font-medium text-gray-700">Choose a condition:</p>
-                      <select
-                        value={selectedConditionId || ""}
-                        onChange={(e) => setSelectedConditionId(e.target.value)}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-                      >
-                        <option value="">-- Select a condition --</option>
-                        {existingConditions.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            if (selectedConditionId) {
-                              handleManualSelect(suggestion, actualIndex, selectedConditionId);
-                            }
-                          }}
-                          disabled={!selectedConditionId || processing === `${suggestion.conditionName}-manual`}
-                          className="flex-1 px-3 py-2 bg-blue-500 text-white text-sm font-medium rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                          Link
-                        </button>
-                        <button
-                          onClick={() => {
-                            setManualSelectIndex(null);
-                            setSelectedConditionId(null);
-                          }}
-                          className="flex-1 px-3 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded hover:bg-gray-300 transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2 mt-4 flex-wrap">
-                      {isUnmatched ? (
-                        <>
-                          <button
-                            onClick={() => handleCreateNew(suggestion)}
-                            disabled={processing === suggestion.conditionName}
-                            className="flex-1 min-w-fit px-3 py-2 bg-blue-500 text-white text-sm font-medium rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            {processing === suggestion.conditionName ? "Creating..." : "Create & Link"}
-                          </button>
-                          <button
-                            onClick={() => setManualSelectIndex(actualIndex)}
-                            className="px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded hover:bg-gray-200 transition-colors"
-                          >
-                            Link to existing
-                          </button>
-                        </>
-                      ) : matchedCondition ? (
-                        <>
-                          <button
-                            onClick={() => handleLinkExisting(suggestion, actualIndex)}
-                            disabled={processing === suggestion.conditionName}
-                            className="flex-1 px-3 py-2 bg-green-500 text-white text-sm font-medium rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            {processing === suggestion.conditionName ? "Linking..." : `Link to "${matchedCondition.name}"`}
-                          </button>
-                          <button
-                            onClick={() => setManualSelectIndex(actualIndex)}
-                            className="px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded hover:bg-gray-200 transition-colors"
-                            title="Choose a different condition"
-                          >
-                            Other
-                          </button>
-                        </>
-                      ) : null}
-
-                      <button
-                        onClick={() => handleDismiss(suggestion)}
-                        className="px-3 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded hover:bg-gray-300 transition-colors"
-                      >
-                        Dismiss
-                      </button>
+                  {/* Action Badge */}
+                  {match.action === 'link-existing' && (
+                    <div className="mb-2">
+                      <p className="text-xs text-gray-600">
+                        Existing: <span className="font-medium">{existingEntity ? getEntityDisplayName(existingEntity, match.type) : match.finalName}</span>
+                      </p>
                     </div>
                   )}
+
+                  {/* Reason */}
+                  {match.reason && (
+                    <p className="text-sm text-gray-600 mb-3">
+                      {match.reason}
+                    </p>
+                  )}
+
+                  {/* Confidence Bar */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="flex-1 bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className="bg-blue-500 h-full transition-all"
+                        style={{ width: `${Math.round(match.confidence * 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-600 whitespace-nowrap">
+                      {Math.round(match.confidence * 100)}%
+                    </span>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 flex-wrap">
+                    {match.action === 'link-existing' ? (
+                      <button
+                        onClick={() => handleAction(idx, 'link')}
+                        disabled={isProcessing}
+                        className="flex-1 px-3 py-2 bg-green-500 text-white text-sm font-medium rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {isProcessing ? "Linking..." : "Link"}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleAction(idx, 'create')}
+                        disabled={isProcessing}
+                        className="flex-1 px-3 py-2 bg-blue-500 text-white text-sm font-medium rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {isProcessing ? "Creating..." : "Create & Link"}
+                      </button>
+                    )}
+                    
+                    <button
+                      onClick={() => handleAction(idx, 'dismiss')}
+                      disabled={processing === `${idx}-dismiss`}
+                      className="px-3 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
                 </div>
               );
             })}
