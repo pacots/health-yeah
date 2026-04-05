@@ -82,9 +82,9 @@ No demo profile or seeded records are created automatically.
 
 ## Data Privacy
 
-✅ All data stays on your device
-✅ Remote storage is optional and only used for sharing snapshots
-✅ Browser provides isolation (future: add encryption)
+✅ All data stays on your device  
+✅ Remote storage is optional and only used for sharing snapshots  
+✅ Browser provides isolation (future: add encryption)  
 
 ## Future Enhancements
 
