@@ -1,0 +1,155 @@
+{
+  "version": 1,
+  "app": "health-wallet",
+  "exportedAt": "2026-04-05T08:24:31.406Z",
+  "wallet": {
+    "profile": {
+      "id": "u17ykcn9u",
+      "name": "Sarah Chen",
+      "dateOfBirth": "1990-05-15",
+      "preferredLanguage": "en",
+      "bloodType": "O+",
+      "emergencyContact": {
+        "name": "Michael Chen",
+        "relationship": "Spouse",
+        "phone": "+1-555-0100"
+      },
+      "allergies": "Penicillin (anaphylaxis - confirmed via allergy testing 2023)\nSulfonamides (rash)",
+      "currentMedications": "Metformin 500mg twice daily with meals (Type 2 Diabetes management)\nLisinopril 10mg once daily in morning (Hypertension)",
+      "currentConditions": "Type 2 Diabetes (active, well-controlled, HbA1c 6.8%)\nHypertension (active, managed)",
+      "majorFamilyHistory": "Father - Type 2 Diabetes, diagnosed 1995\nMother - Hypertension, diagnosed 2005",
+      "primaryPhysicianName": "Dr. Emily Rodriguez, MD",
+      "primaryPhysicianPhone": "+1-555-0200",
+      "primaryClinic": "City Medical Center",
+      "insuranceCompany": "Blue Cross Blue Shield",
+      "insuranceNumber": "#12345678",
+      "height": "5'6\"",
+      "weight": "165 lbs",
+      "importantNotes": "Patient manages diabetes well with current medication. No known medical devices. Prefers morning appointments when possible.",
+      "createdAt": 1775365671659,
+      "updatedAt": 1775365671659
+    },
+    "allergies": [
+      {
+        "id": "ncct7jht2",
+        "type": "allergy",
+        "allergen": "Penicillin",
+        "severity": "severe",
+        "reaction": "Anaphylaxis",
+        "source": "document-backed",
+        "notes": "Confirmed via allergy testing 2023",
+        "createdAt": 1775365671659,
+        "updatedAt": 1775365671659
+      },
+      {
+        "id": "dxyo2db2m",
+        "type": "allergy",
+        "allergen": "Sulfonamides",
+        "severity": "moderate",
+        "reaction": "Rash",
+        "source": "self-reported",
+        "createdAt": 1775365671659,
+        "updatedAt": 1775365671659
+      }
+    ],
+    "medications": [
+      {
+        "id": "w6p3ioyzl",
+        "type": "medication",
+        "name": "Metformin",
+        "dosage": "500mg",
+        "frequency": "Twice daily with meals",
+        "indication": "Type 2 Diabetes management",
+        "source": "self-reported",
+        "notes": "Taking since 2022, well tolerated",
+        "createdAt": 1775365671659,
+        "updatedAt": 1775365671659
+      },
+      {
+        "id": "x8y8oupth",
+        "type": "medication",
+        "name": "Lisinopril",
+        "dosage": "10mg",
+        "frequency": "Once daily in morning",
+        "indication": "Hypertension",
+        "source": "document-backed",
+        "createdAt": 1775365671659,
+        "updatedAt": 1775365671659
+      }
+    ],
+    "conditions": [
+      {
+        "id": "efoiwp8ep",
+        "type": "condition",
+        "name": "Type 2 Diabetes",
+        "status": "active",
+        "onsetDate": "2022-01-10",
+        "source": "document-backed",
+        "notes": "Well-controlled with current medication, last HbA1c 6.8%",
+        "createdAt": 1775365671659,
+        "updatedAt": 1775365671659
+      },
+      {
+        "id": "e8g41hd43",
+        "type": "condition",
+        "name": "Hypertension",
+        "status": "active",
+        "onsetDate": "2019-06-15",
+        "source": "self-reported",
+        "notes": "Controlled with medication, regular monitoring",
+        "createdAt": 1775365671659,
+        "updatedAt": 1775365671659
+      }
+    ],
+    "documents": [
+      {
+        "id": "4rmzikm9m",
+        "title": "2023 Allergy Test Report",
+        "kind": "text",
+        "textContent": "ALLERGY TEST RESULTS - 2023\n\nPatient: Sarah Chen\nDate: September 15, 2023\n\nConfirmed Allergies:\n- Penicillin: SEVERE (Anaphylaxis risk)\n- Sulfonamides: MODERATE (Rash)\n\nRecommendations:\n- Avoid all penicillin-based antibiotics\n- Alternative antibiotics available (fluoroquinolones, macrolides)\n- Carry epinephrine auto-injector at all times",
+        "category": "lab-result",
+        "createdAt": "2026-04-05T05:07:51.659Z",
+        "updatedAt": "2026-04-05T05:07:51.659Z",
+        "llmSummary": null
+      },
+      {
+        "id": "em2yavk0n",
+        "title": "Recent Lab Results - March 2026",
+        "kind": "text",
+        "textContent": "LAB RESULTS - MARCH 2026\n\nPatient: Sarah Chen\nDate Collected: March 20, 2026\n\nHematology:\n- WBC: 7.2 K/uL (normal)\n- Hemoglobin: 13.5 g/dL (normal)\n- Platelets: 245 K/uL (normal)\n\nMetabolic Panel:\n- Glucose (fasting): 118 mg/dL (slightly elevated)\n- HbA1c: 6.8% (well-controlled diabetes)\n- Creatinine: 0.95 mg/dL (normal)\n- BUN: 18 mg/dL (normal)\n\nLipid Panel:\n- Total Cholesterol: 195 mg/dL\n- LDL: 115 mg/dL (slightly elevated)\n- HDL: 52 mg/dL (normal)\n- Triglycerides: 110 mg/dL (normal)",
+        "category": "lab-result",
+        "createdAt": "2026-04-05T05:07:51.659Z",
+        "updatedAt": "2026-04-05T05:07:51.659Z",
+        "llmSummary": null
+      },
+      {
+        "id": "urn87lukd",
+        "title": "Appointment",
+        "kind": "file",
+        "fileName": "medical_visit_sample.pdf",
+        "mimeType": "application/pdf",
+        "extension": ".pdf",
+        "fileSizeBytes": 2482,
+        "fileContent": "JVBERi0xLjQKJZOMi54gUmVwb3J0TGFiIEdlbmVyYXRlZCBQREYgZG9jdW1lbnQgKG9wZW5zb3VyY2UpCjEgMCBvYmoKPDwKL0YxIDIgMCBSIC9GMiAzIDAgUgo+PgplbmRvYmoKMiAwIG9iago8PAovQmFzZUZvbnQgL0hlbHZldGljYSAvRW5jb2RpbmcgL1dpbkFuc2lFbmNvZGluZyAvTmFtZSAvRjEgL1N1YnR5cGUgL1R5cGUxIC9UeXBlIC9Gb250Cj4+CmVuZG9iagozIDAgb2JqCjw8Ci9CYXNlRm9udCAvSGVsdmV0aWNhLUJvbGQgL0VuY29kaW5nIC9XaW5BbnNpRW5jb2RpbmcgL05hbWUgL0YyIC9TdWJ0eXBlIC9UeXBlMSAvVHlwZSAvRm9udAo+PgplbmRvYmoKNCAwIG9iago8PAovQ29udGVudHMgOCAwIFIgL01lZGlhQm94IFsgMCAwIDU5NS4yNzU2IDg0MS44ODk4IF0gL1BhcmVudCA3IDAgUiAvUmVzb3VyY2VzIDw8Ci9Gb250IDEgMCBSIC9Qcm9jU2V0IFsgL1BERiAvVGV4dCAvSW1hZ2VCIC9JbWFnZUMgL0ltYWdlSSBdCj4+IC9Sb3RhdGUgMCAvVHJhbnMgPDwKCj4+IAogIC9UeXBlIC9QYWdlCj4+CmVuZG9iago1IDAgb2JqCjw8Ci9QYWdlTW9kZSAvVXNlTm9uZSAvUGFnZXMgNyAwIFIgL1R5cGUgL0NhdGFsb2cKPj4KZW5kb2JqCjYgMCBvYmoKPDwKL0F1dGhvciAoXChhbm9ueW1vdXNcKSkgL0NyZWF0aW9uRGF0ZSAoRDoyMDI2MDQwNDIyNTUwMSswMCcwMCcpIC9DcmVhdG9yIChcKHVuc3BlY2lmaWVkXCkpIC9LZXl3b3JkcyAoKSAvTW9kRGF0ZSAoRDoyMDI2MDQwNDIyNTUwMSswMCcwMCcpIC9Qcm9kdWNlciAoUmVwb3J0TGFiIFBERiBMaWJyYXJ5IC0gXChvcGVuc291cmNlXCkpIAogIC9TdWJqZWN0IChcKHVuc3BlY2lmaWVkXCkpIC9UaXRsZSAoXChhbm9ueW1vdXNcKSkgL1RyYXBwZWQgL0ZhbHNlCj4+CmVuZG9iago3IDAgb2JqCjw8Ci9Db3VudCAxIC9LaWRzIFsgNCAwIFIgXSAvVHlwZSAvUGFnZXMKPj4KZW5kb2JqCjggMCBvYmoKPDwKL0ZpbHRlciBbIC9BU0NJSTg1RGVjb2RlIC9GbGF0ZURlY29kZSBdIC9MZW5ndGggMTA2OQo+PgpzdHJlYW0KR2F0VTJnSlpjWyY6Tl5scDVzTWhPUTkoJF1HMUxFOUo3KUJJSGpLcmAoSSxeUCRDUzBha3E9MD5iU0RZRmxRJTtZPyQhTkIuamwkSmUpXklWW0Q/K0tDYGpjUFguMjApQGYtVTUvTDxDbykiKkMyK0l0MzY5N2YnMXIwbmQ2KC8qQTVKYWFMQ0NWLjExclh0bFs0MCsxNl41dSw5THNkLD1VcUAlNm5ZQ01LUSM6MSVoQiZFXDZaaCJsbUg9XkBJUi80SUpBXUc5MFpPX3AjRlMlUy1LI09AYkMkKldFaFgiaidFKVtpSWRePlg3NCpsTkQjJVNMZSNpaStMVj48PiJKaEdFLGtgQi5rdWNfO2VWTzhkPjhHV2hvb01mJDI0TUYkbmVASyJiTGEtNWAxLGEhRFFNQE0mQD1wblI5V25KV2hnR0poVydERUl0UFRMKlouKF9jOSN0S11mWF8/MEcvPkdGJzdcKWxQTChYL21pcTQ5SiZUa0MwMlJuUC1GXD10SDU3OSE2MmdZc1okIVo8WTghUC5wLnVNYXIyPi1uOSxKX0dIOU9eIU9XKlYpQiY9Rl9BLVA7OkhCL0xgSi43X1wnUjVVbVN1cDssdGA3cDc6dVNtdUI+cENJTWc5R0NVK2I6XkVaYUJkKGMwTD0+X3QlXzBnIykoV0s9ZW8yL1AtdV5ULWltJ21rM0ZCQCtRXFQjJ2IicnJMQWEjV1Uobl8qb2ZCakklQkpedEhfP0B0RTgmTC8wMW9CZD0rK1o7UCleLGoqNzpZXSskJ0dDc1trQmpqYnAxKm5xJjxoK2VJSjNgNjwwQ0BJVVchIkIyOTFGMklSUWwxYD08aj1cUHQvbGMnTGE3ZG0nLi1BT1o1UzMoMildbXFrWVNlK2BgQiY3LWciY19aKF8jL3Q3L0coUiRDTG5kVVl1NUVTVUlPRVFcNFJxSSMkXlJPWmA9aF5xNGVcWyhbYlBNckgib3RrcS5ANlhzN3JkKmFiS3RpRFEucWk+P1gxJlgvY01dRl42c2VvcSVTSkxLPDFFUClrZ25QNSYnTj5PSF8vJnEqT04qMXA/WDNJaDtDWzVALS9zMFBrPXNBM2NvSVEsS2M9KjBrKj1eOyYsNUdJXy1UZlkwSkcmOlUrNj4vLHJWOSU5RDAmUV9rJSFOPl9DdFJVOV5CO1pCOzVgRy5nbW9tYjxmNVc8KCJOLmFaSnJMWFM6QyYhNmZUQzFzMDlxZ1M7NSsoQTVAMCVILEVuWVFKXlZLO2khZU8kJEtnNjZPc1gnS0ctJzQ0JD1ULDRCVXJtIUhcaV5wUFVhby9wLFMrRDlWdVdxJlY+R1crK1olPHNeO2xuUWFJNEdvdCQ2OlQzI2RITz1pPkpqNTlxdGVbMCZQWDJjX2lLR0I9MilNbSs2KV89TEJ+PmVuZHN0cmVhbQplbmRvYmoKeHJlZgowIDkKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDYxIDAwMDAwIG4gCjAwMDAwMDAxMDIgMDAwMDAgbiAKMDAwMDAwMDIwOSAwMDAwMCBuIAowMDAwMDAwMzIxIDAwMDAwIG4gCjAwMDAwMDA1MjQgMDAwMDAgbiAKMDAwMDAwMDU5MiAwMDAwMCBuIAowMDAwMDAwODcyIDAwMDAwIG4gCjAwMDAwMDA5MzEgMDAwMDAgbiAKdHJhaWxlcgo8PAovSUQgCls8MDdlMTIwMTgwNzVjMDcwYTA5MWYwMDBlZTdkNjM0OTg+PDA3ZTEyMDE4MDc1YzA3MGEwOTFmMDAwZWU3ZDYzNDk4Pl0KJSBSZXBvcnRMYWIgZ2VuZXJhdGVkIFBERiBkb2N1bWVudCAtLSBkaWdlc3QgKG9wZW5zb3VyY2UpCgovSW5mbyA2IDAgUgovUm9vdCA1IDAgUgovU2l6ZSA5Cj4+CnN0YXJ0eHJlZgoyMDkxCiUlRU9GCg==",
+        "createdAt": "2026-04-05T08:24:06.678Z",
+        "updatedAt": "2026-04-05T08:24:13.427Z",
+        "aiSummaryStatus": "ready",
+        "aiStructuredSummary": "Document Type: Clinical note  \nClinical Summary: The patient, John Doe, presents with mild headache, fatigue, and sore throat, suggesting a likely viral upper respiratory infection.  \nKey Findings:  \n- Chief Complaints: Mild headache, fatigue, sore throat for the past 3 days  \n- Vital Signs: Temperature 98.6°F, Blood Pressure 120/80 mmHg, Heart Rate 72 bpm, Respiratory Rate 16 breaths/min  \nConditions/Diagnoses: Likely viral upper respiratory infection  \nMedications Mentioned: Over-the-counter pain relievers as needed  \nAllergies Mentioned: None  \nImportant Dates: Date of Visit: April 4, 2026  \nProvider Notes: Treatment plan includes rest and hydration, with a follow-up if symptoms worsen or persist beyond 7 days.  \nLimitations: None",
+        "aiSummaryGeneratedAt": "2026-04-05T08:24:13.427Z",
+        "aiConditionSuggestions": [
+          {
+            "type": "create-new",
+            "conditionName": "Viral Upper Respiratory Infection",
+            "confidence": 0.9,
+            "reason": "The document describes symptoms and a diagnosis consistent with a viral upper respiratory infection, which is not currently listed in the active conditions.",
+            "reviewed": true,
+            "accepted": false
+          }
+        ]
+      }
+    ],
+    "preferences": {
+      "preferredLanguage": "en"
+    }
+  }
+}
