@@ -8,7 +8,7 @@ import { ConfirmDialog } from "@/lib/ConfirmDialog";
 import { DEFAULT_SHARE_EXPIRATION_MS, SHARE_EXPIRATION_OPTIONS } from "@/lib/share-expiration";
 
 export default function SharePage() {
-  const { records, createShare, getAllShares, deleteShare } = useApp();
+  const { records, documents, createShare, getAllShares, deleteShare } = useApp();
   const [showForm, setShowForm] = useState(false);
   const [shares, setShares] = useState<Share[]>([]);
   const [loading, setLoading] = useState(false);
@@ -79,11 +79,12 @@ export default function SharePage() {
         {showForm && (
           <ShareForm
             records={records}
+            documents={documents}
             onClose={() => setShowForm(false)}
-            onSave={async (scope, selectedRecordIds, expirationMs) => {
+            onSave={async (scope, selectedRecordIds, expirationMs, selectedDocumentIds) => {
               setLoading(true);
               try {
-                const newShare = await createShare(scope, selectedRecordIds, expirationMs);
+                const newShare = await createShare(scope, selectedRecordIds, expirationMs, selectedDocumentIds);
                 setShares([newShare, ...shares]);
                 setShowForm(false);
               } finally {
@@ -196,19 +197,23 @@ export default function SharePage() {
 
 function ShareForm({
   records,
+  documents,
   onClose,
   onSave,
 }: {
   records: any[];
+  documents: any[];
   onClose: () => void;
   onSave: (
     scope: "emergency" | "continuity",
     selectedIds: string[],
-    expirationMs: number
+    expirationMs: number,
+    selectedDocumentIds: string[]
   ) => Promise<void>;
 }) {
   const [scope, setScope] = useState<"emergency" | "continuity" | null>(null);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
   const [expirationMs, setExpirationMs] = useState<number>(DEFAULT_SHARE_EXPIRATION_MS);
   const [loading, setLoading] = useState(false);
 
@@ -225,9 +230,19 @@ function ShareForm({
         .filter((r) => r.type === "allergy" || r.type === "medication")
         .map((r) => r.id);
       setSelectedRecordIds(emergencyRecords);
+      // Emergency shares remain minimal: documents are intentionally not selected.
+      setSelectedDocumentIds([]);
     } else {
       setSelectedRecordIds(records.map((r) => r.id));
+      // Continuity documents require explicit user intent: default is none selected.
+      setSelectedDocumentIds([]);
     }
+  };
+
+  const handleToggleDocument = (id: string) => {
+    setSelectedDocumentIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -238,7 +253,12 @@ function ShareForm({
 
     setLoading(true);
     try {
-      await onSave(scope as "emergency" | "continuity", selectedRecordIds, expirationMs);
+      await onSave(
+        scope as "emergency" | "continuity",
+        selectedRecordIds,
+        expirationMs,
+        selectedDocumentIds
+      );
     } finally {
       setLoading(false);
     }
@@ -301,6 +321,65 @@ function ShareForm({
             </select>
             <p className="text-xs text-gray-500 mt-1">Links expire automatically after the selected duration.</p>
           </div>
+
+          {/* Document Selection (Continuity only) */}
+          {scope === "continuity" && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="label mb-0">Documents to Share</label>
+                {documents.length > 0 && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDocumentIds(documents.map((d) => d.id))}
+                      className="text-blue-700 hover:text-blue-800"
+                    >
+                      Select all
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDocumentIds([])}
+                      className="text-gray-600 hover:text-gray-800"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {documents.length === 0 ? (
+                <p className="text-xs text-gray-600">No documents available to share.</p>
+              ) : (
+                <div className="space-y-2 max-h-48 overflow-y-auto border border-gray-200 rounded p-3">
+                  {documents.map((doc) => (
+                    <label key={doc.id} className="flex items-start cursor-pointer text-xs sm:text-sm">
+                      <input
+                        type="checkbox"
+                        checked={selectedDocumentIds.includes(doc.id)}
+                        onChange={() => handleToggleDocument(doc.id)}
+                        className="mr-2 mt-0.5"
+                      />
+                      <span className="text-gray-700 break-words">
+                        <span className="font-medium">{doc.title}</span>
+                        <span className="text-gray-500 ml-1">
+                          ({doc.kind === "text" ? "Text" : (doc.extension?.toUpperCase() || "File")})
+                        </span>
+                        {doc.updatedAt && (
+                          <span className="block text-[11px] text-gray-500 mt-0.5">
+                            Updated {new Date(doc.updatedAt).toLocaleDateString()}
+                          </span>
+                        )}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              <p className="text-xs text-gray-500 mt-1">
+                Selected {selectedDocumentIds.length} of {documents.length} documents.
+              </p>
+            </div>
+          )}
 
           {/* Record Selection */}
           <div>

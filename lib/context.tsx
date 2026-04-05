@@ -54,7 +54,8 @@ type AppContextType = {
   createShare: (
     scope: "emergency" | "continuity",
     selectedRecordIds: string[],
-    expirationMs?: number
+    expirationMs?: number,
+    selectedDocumentIds?: string[]
   ) => Promise<Share>;
   getShare: (shareId: string) => Promise<Share | null>;
   getAllShares: () => Promise<Share[]>;
@@ -625,7 +626,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const createShare = async (
     scope: "emergency" | "continuity",
     selectedRecordIds: string[],
-    expirationMs?: number
+    expirationMs?: number,
+    selectedDocumentIds?: string[]
   ) => {
     if (!patient) throw new Error("No patient found");
 
@@ -634,8 +636,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const safeExpirationMs = sanitizeShareExpirationMs(expirationMs);
     const expiresAt = Date.now() + safeExpirationMs;
 
+    const selectedDocuments =
+      scope === "continuity"
+        ? documents.filter((doc) => (selectedDocumentIds || []).includes(doc.id))
+        : [];
+
     // Build share snapshot with correct payload per scope
-    const shareSnapshot = buildShareSnapshot(scope, patient, selectedRecords, documents);
+    const shareSnapshot = buildShareSnapshot(scope, patient, selectedRecords, selectedDocuments);
     shareSnapshot.id = shareId;
     shareSnapshot.expiresAt = expiresAt;
     shareSnapshot.status = "active";

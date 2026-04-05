@@ -8,24 +8,32 @@ export function buildShareSnapshot(
   scope: "emergency" | "continuity",
   patient: Patient,
   selectedRecords: Record[],
-  allDocuments: Document[]
+  selectedDocuments: Document[]
 ): Share {
   // For emergency: allergies, medications only (minimal)
-  // For continuity: all selected records + full documents with AI summaries and content
+  // For continuity: selected records + only explicitly selected documents
 
   let documentSnapshots: Document[] = [];
 
   if (scope === "continuity") {
-    // Include ALL documents with full content and AI summaries
-    // This ensures document text and AI summaries are preserved for provider access
-    documentSnapshots = allDocuments.map((doc) => ({
+    // Include ALL documents with both AI output and original payload data.
+    // Provider view must have access to original content, not only generated summaries.
+    documentSnapshots = selectedDocuments.map((doc) => ({
       ...doc,
-      // Explicitly preserve all content and AI fields
+      // Explicitly preserve original content fields
+      fileContent: doc.fileContent,
+      fileName: doc.fileName,
+      mimeType: doc.mimeType,
+      extension: doc.extension,
+      fileSizeBytes: doc.fileSizeBytes,
       content: doc.content,
       textContent: doc.textContent,
+
+      // Explicitly preserve AI fields
       aiStructuredSummary: doc.aiStructuredSummary,
       aiSummaryStatus: doc.aiSummaryStatus,
       aiSummaryGeneratedAt: doc.aiSummaryGeneratedAt,
+      aiSummaryError: doc.aiSummaryError,
     }));
   }
 

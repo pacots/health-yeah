@@ -8,6 +8,84 @@ import { Share } from "@/lib/types";
 import { getRemoteShareStatus } from "@/lib/supabase";
 
 type ShareStatus = "active" | "revoked" | "expired" | "notfound";
+type SharedDocument = NonNullable<Share["documentSnapshots"]>[number];
+
+function getOriginalDocumentText(document: SharedDocument): string {
+  return (document.textContent || document.content || "").trim();
+}
+
+function canRenderImage(document: SharedDocument): boolean {
+  return !!document.fileContent && !!document.mimeType && document.mimeType.startsWith("image/");
+}
+
+function canOpenFile(document: SharedDocument): boolean {
+  return !!document.fileContent;
+}
+
+function getDownloadFileName(document: SharedDocument): string {
+  if (document.fileName) return document.fileName;
+
+  const safeTitle = (document.title || "shared-document").replace(/[^a-zA-Z0-9-_\.]/g, "_");
+  const extension = document.extension
+    ? document.extension.startsWith(".")
+      ? document.extension
+      : `.${document.extension}`
+    : "";
+
+  return `${safeTitle}${extension}`;
+}
+
+function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function bytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+}
+
+function downloadOriginalFile(document: SharedDocument): void {
+  if (!document.fileContent) return;
+
+  try {
+    const fallbackMime = document.mimeType || "application/octet-stream";
+    const fileName = getDownloadFileName(document);
+    let blob: Blob;
+
+    if (document.fileContent.startsWith("data:")) {
+      const commaIndex = document.fileContent.indexOf(",");
+      if (commaIndex === -1) return;
+
+      const header = document.fileContent.slice(5, commaIndex);
+      const payload = document.fileContent.slice(commaIndex + 1);
+      const inferredMime = header.split(";")[0] || fallbackMime;
+
+      if (header.includes(";base64")) {
+        blob = new Blob([bytesToArrayBuffer(base64ToBytes(payload))], { type: inferredMime });
+      } else {
+        blob = new Blob([decodeURIComponent(payload)], { type: inferredMime });
+      }
+    } else {
+      // Stored as raw base64 without data URL header
+      blob = new Blob([bytesToArrayBuffer(base64ToBytes(document.fileContent))], { type: fallbackMime });
+    }
+
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = window.document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = fileName;
+    window.document.body.appendChild(anchor);
+    anchor.click();
+    window.document.body.removeChild(anchor);
+    URL.revokeObjectURL(objectUrl);
+  } catch (error) {
+    console.error("Failed to download original file:", error);
+  }
+}
 
 export default function ProviderViewPage({ params }: { params: Promise<{ shareId: string }> }) {
   const { shareId } = React.use(params);
@@ -315,21 +393,72 @@ export default function ProviderViewPage({ params }: { params: Promise<{ shareId
                 <div key={d.id} className="pb-4 border-b border-gray-100 last:border-b-0">
                   <p className="font-semibold text-gray-900 text-sm mb-2">{d.title}</p>
 
-                  {/* Show AI Summary if available */}
-                  {d.aiStructuredSummary ? (
-                    <div className="text-xs text-gray-700 bg-slate-50 p-3 rounded border border-slate-200 whitespace-pre-wrap line-clamp-4">
-                      {d.aiStructuredSummary}
-                    </div>
-                  ) : d.kind === "text" ? (
-                    <p className="text-xs text-gray-600 line-clamp-3 whitespace-pre-wrap">
-                      {(d.textContent || d.content || "").substring(0, 200)}...
-                    </p>
-                  ) : (
-                    <p className="text-xs text-gray-600">
-                      [{d.extension?.toUpperCase() || "File"}] {d.fileName || "Document"}
-                      {d.fileSizeBytes && ` • ${(d.fileSizeBytes / 1024).toFixed(1)} KB`}
-                    </p>
-                  )}
+                  <p className="text-[11px] text-gray-500 mb-3">
+                    {d.kind === "text" ? "Text Document" : `[${d.extension?.toUpperCase() || "FILE"}] ${d.fileName || "Document"}`}
+                    {d.fileSizeBytes ? ` • ${(d.fileSizeBytes / 1024).toFixed(1)} KB` : ""}
+                  </p>
+
+                  {/* AI summary section (fully readable, no truncation) */}
+                  <div className="mb-3">
+                    <p className="text-[11px] font-semibold text-slate-600 uppercase tracking-wide mb-1.5">AI Summary</p>
+                    {d.aiStructuredSummary ? (
+                      <div className="text-xs text-gray-700 bg-slate-50 p-3 rounded border border-slate-200 whitespace-pre-wrap break-words max-h-72 overflow-y-auto">
+                        {d.aiStructuredSummary}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-600">No AI summary available for this document.</p>
+                    )}
+                  </div>
+
+                  {/* Original content section */}
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Original Content</p>
+
+                    {d.kind === "text" ? (
+                      getOriginalDocumentText(d) ? (
+                        <details className="group">
+                          <summary className="text-xs text-blue-700 hover:text-blue-800 cursor-pointer font-medium select-none">
+                            View original text
+                          </summary>
+                          <div className="mt-2 text-xs text-gray-700 bg-white p-3 rounded border border-slate-200 whitespace-pre-wrap break-words max-h-72 overflow-y-auto">
+                            {getOriginalDocumentText(d)}
+                          </div>
+                        </details>
+                      ) : (
+                        <p className="text-xs text-gray-600">Original text is not available in this snapshot.</p>
+                      )
+                    ) : canRenderImage(d) ? (
+                      <details className="group">
+                        <summary className="text-xs text-blue-700 hover:text-blue-800 cursor-pointer font-medium select-none">
+                          View original image
+                        </summary>
+                        <div className="mt-2 space-y-2">
+                          <img
+                            src={d.fileContent}
+                            alt={d.title}
+                            className="max-h-64 w-auto rounded border border-slate-200"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => downloadOriginalFile(d)}
+                            className="inline-block text-xs text-blue-700 hover:text-blue-800 font-medium"
+                          >
+                            Download original image
+                          </button>
+                        </div>
+                      </details>
+                    ) : canOpenFile(d) ? (
+                      <button
+                        type="button"
+                        onClick={() => downloadOriginalFile(d)}
+                        className="inline-block text-xs text-blue-700 hover:text-blue-800 font-medium"
+                      >
+                        Download original file
+                      </button>
+                    ) : (
+                      <p className="text-xs text-gray-600">Original file is not available in this snapshot.</p>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
