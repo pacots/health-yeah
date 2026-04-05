@@ -47,10 +47,10 @@ const initLocalforage = async () => {
 
   try {
     localforage.config({
-      name: "health-yeah",
+      name: "health-wallet",
       version: 1.0,
       storeName: "wallet_store",
-      description: "Health Yeah patient data storage",
+      description: "Health Wallet patient data storage",
     });
     isLocalforageReady = true;
     console.log("[Storage] Localforage initialized");

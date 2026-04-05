@@ -126,7 +126,7 @@ export default function Home() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Health Yeah</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Health Wallet</h1>
           <p className="text-gray-600">Loading your health information...</p>
         </div>
       </div>
@@ -139,7 +139,7 @@ export default function Home() {
         <div className="page-max-width">
           <div className="card-premium max-w-xl mx-auto">
             <p className="text-sm font-semibold text-blue-600 uppercase tracking-widest mb-2">Welcome</p>
-            <h1 className="page-title mb-3">Your Portable Health Yeah</h1>
+            <h1 className="page-title mb-3">Your Portable Health Wallet</h1>
             <p className="text-slate-600 text-sm sm:text-base mb-3">
               Keep your core health profile on this device by default, then share only what is needed.
             </p>
@@ -248,7 +248,7 @@ export default function Home() {
         <div className="page-header flex flex-col sm:flex-row justify-between items-start gap-4">
           <div className="min-w-0">
             <p className="text-sm font-semibold text-blue-600 uppercase tracking-widest mb-2">Welcome Back</p>
-            <h1 className="page-title">Health Yeah</h1>
+            <h1 className="page-title">Health Wallet</h1>
             <p className="page-subtitle">Your complete health information, always accessible</p>
           </div>
         </div>

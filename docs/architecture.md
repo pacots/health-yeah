@@ -1,4 +1,4 @@
-# Architecture: Local-First Health Yeah
+# Architecture: Local-First Health Wallet
 
 ## Tech Stack
 

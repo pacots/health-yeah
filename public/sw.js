@@ -1,4 +1,4 @@
-// Health Yeah Service Worker - Offline-First Implementation
+// Health Wallet Service Worker - Offline-First Implementation
 // Priority: Emergency-critical routes must work offline without network dependency
 
 const CACHE_VERSION = 'hw-v1';
@@ -18,7 +18,7 @@ const CRITICAL_ROUTES = [
 
 // Install: precache critical routes to ensure offline access
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing Health Yeah service worker');
+  console.log('[SW] Installing Health Wallet service worker');
 
   event.waitUntil(
     caches.open(RUNTIME_CACHE).then((cache) => {
@@ -47,7 +47,7 @@ self.addEventListener('install', (event) => {
 
 // Activate: claim all clients
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating Health Yeah service worker');
+  console.log('[SW] Activating Health Wallet service worker');
   event.waitUntil(
     // Clean up old caches
     caches.keys().then((cacheNames) => {

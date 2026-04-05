@@ -1,4 +1,4 @@
-// Core types for the Health Yeah app
+// Core types for the Health Wallet app
 
 export type Patient = {
   id: string;

@@ -1,4 +1,4 @@
-# Data Model: Local-First Health Yeah
+# Data Model: Local-First Health Wallet
 
 ## Overview
 

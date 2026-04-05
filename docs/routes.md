@@ -4,7 +4,7 @@
 
 ### Patient Dashboard
 - **Route**: `/` (root)
-- **Purpose**: Overview of Health Yeah, quick access to main features
+- **Purpose**: Overview of health wallet, quick access to main features
 - **Content**:
   - Patient name and DOB
   - Quick summary: # allergies, # medications, # conditions

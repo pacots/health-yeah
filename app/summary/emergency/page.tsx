@@ -162,7 +162,7 @@ ${conditions.length === 0 ? "None" : conditions.map((c) => `• ${(c as any).nam
       const url = canvas.toDataURL("image/png");
       const link = document.createElement("a");
       link.href = url;
-      link.download = `health-yeah-share-${shareCreated}.png`;
+      link.download = `health-wallet-share-${shareCreated}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

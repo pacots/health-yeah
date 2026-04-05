@@ -1,6 +1,6 @@
-# Health Yeah MVP
+# Health Wallet MVP
 
-A **local-first, patient-controlled Health Yeah app** for managing and sharing essential medical information.
+A **local-first, patient-controlled health wallet** for managing and sharing essential medical information.
 
 ## Live App
 
@@ -70,7 +70,7 @@ If these are not set, the app still works locally and share links are limited to
 
 ## Easy User Tutorial
 
-Use this quick walkthrough if this is your first time using Health Yeah:
+Use this quick walkthrough if this is your first time using Health Wallet:
 
 1. **Open the app**
 	- Go to https://healthyeah.vercel.app/
