@@ -49,8 +49,16 @@ export function ConditionCard({ condition, linkedDocuments, onDelete }: Conditio
   return (
     <div className="record-list-item record-item-condition border-2 border-transparent hover:border-blue-200 transition-colors">
       {/* Collapsed Header - Always Visible */}
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setIsExpanded(!isExpanded)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setIsExpanded((prev) => !prev);
+          }
+        }}
         className="w-full text-left focus:outline-none"
       >
         <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
@@ -108,7 +116,7 @@ export function ConditionCard({ condition, linkedDocuments, onDelete }: Conditio
             Delete
           </button>
         </div>
-      </button>
+      </div>
 
       {/* Expanded Content */}
       {isExpanded && (

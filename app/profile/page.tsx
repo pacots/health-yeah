@@ -1,14 +1,67 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/context";
 import Link from "next/link";
+import { ConfirmDialog } from "@/lib/ConfirmDialog";
+import { storage } from "@/lib/storage";
+import { buildWalletExport, downloadWalletExport, parseWalletExportFile, walletFromExport } from "@/lib/wallet-transfer";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { patient, updatePatient } = useApp();
+  const app = useApp();
+  const { patient, updatePatient } = app;
   const [loading, setLoading] = useState(false);
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importSuccess, setImportSuccess] = useState<string | null>(null);
+  const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
+  const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [formData, setFormData] = useState({
+    name: "",
+    dateOfBirth: "",
+    preferredLanguage: "en",
+    bloodType: "",
+    emergencyContactName: "",
+    emergencyContactRelationship: "",
+    emergencyContactPhone: "",
+    majorFamilyHistory: "",
+    primaryPhysicianName: "",
+    primaryPhysicianPhone: "",
+    primaryClinic: "",
+    insuranceCompany: "",
+    insuranceNumber: "",
+    height: "",
+    weight: "",
+    importantNotes: "",
+  });
+
+  useEffect(() => {
+    if (!patient) return;
+
+    setFormData({
+      name: patient.name,
+      dateOfBirth: patient.dateOfBirth,
+      preferredLanguage: patient.preferredLanguage,
+      bloodType: patient.bloodType || "",
+      emergencyContactName: patient.emergencyContact?.name || "",
+      emergencyContactRelationship: patient.emergencyContact?.relationship || "",
+      emergencyContactPhone: patient.emergencyContact?.phone || "",
+      majorFamilyHistory: patient.majorFamilyHistory || "",
+      primaryPhysicianName: patient.primaryPhysicianName || "",
+      primaryPhysicianPhone: patient.primaryPhysicianPhone || "",
+      primaryClinic: patient.primaryClinic || "",
+      insuranceCompany: patient.insuranceCompany || "",
+      insuranceNumber: patient.insuranceNumber || "",
+      height: patient.height || "",
+      weight: patient.weight || "",
+      importantNotes: patient.importantNotes || "",
+    });
+  }, [patient]);
 
   if (!patient) {
     return (
@@ -17,25 +70,6 @@ export default function ProfilePage() {
       </div>
     );
   }
-
-  const [formData, setFormData] = useState({
-    name: patient.name,
-    dateOfBirth: patient.dateOfBirth,
-    preferredLanguage: patient.preferredLanguage,
-    bloodType: patient.bloodType || "",
-    emergencyContactName: patient.emergencyContact?.name || "",
-    emergencyContactRelationship: patient.emergencyContact?.relationship || "",
-    emergencyContactPhone: patient.emergencyContact?.phone || "",
-    majorFamilyHistory: patient.majorFamilyHistory || "",
-    primaryPhysicianName: patient.primaryPhysicianName || "",
-    primaryPhysicianPhone: patient.primaryPhysicianPhone || "",
-    primaryClinic: patient.primaryClinic || "",
-    insuranceCompany: patient.insuranceCompany || "",
-    insuranceNumber: patient.insuranceNumber || "",
-    height: patient.height || "",
-    weight: patient.weight || "",
-    importantNotes: patient.importantNotes || "",
-  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -74,6 +108,88 @@ export default function ProfilePage() {
     }
   };
 
+  const handleExportWallet = async () => {
+    setImportError(null);
+    setImportSuccess(null);
+    setBackupLoading(true);
+    try {
+      if (typeof app.exportWalletBackup === "function") {
+        await app.exportWalletBackup();
+      } else {
+        // Fallback path if runtime context is stale during HMR.
+        const wallet = await storage.getWallet();
+        if (!wallet) {
+          throw new Error("No wallet data available to export.");
+        }
+        const payload = buildWalletExport(wallet);
+        downloadWalletExport(payload);
+      }
+      setImportSuccess("Wallet exported successfully.");
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "Failed to export wallet.");
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const handleOpenImportPicker = () => {
+    setImportError(null);
+    setImportSuccess(null);
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    e.target.value = "";
+
+    if (!file) return;
+
+    setPendingImportFile(file);
+    setShowImportConfirm(true);
+  };
+
+  const handleConfirmImport = async () => {
+    if (!pendingImportFile) return;
+
+    setShowImportConfirm(false);
+    setImporting(true);
+    setImportError(null);
+    setImportSuccess(null);
+
+    try {
+      if (typeof app.importWalletBackup === "function") {
+        await app.importWalletBackup(pendingImportFile);
+      } else {
+        // Fallback path if runtime context is stale during HMR.
+        const parsedExport = await parseWalletExportFile(pendingImportFile);
+        const importedWallet = walletFromExport(parsedExport);
+        const previousWallet = await storage.getWallet();
+
+        await storage.clear();
+
+        try {
+          await storage.setWallet(importedWallet);
+        } catch (error) {
+          if (previousWallet) {
+            await storage.setWallet(previousWallet);
+          }
+          throw error;
+        }
+      }
+
+      setImportSuccess("Wallet imported successfully. Redirecting to dashboard...");
+      setPendingImportFile(null);
+      setTimeout(() => {
+        // Force refresh so app state rehydrates from restored local wallet.
+        window.location.href = "/";
+      }, 700);
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "Failed to import wallet.");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="page-container">
       <div className="page-max-width">
@@ -83,6 +199,47 @@ export default function ProfilePage() {
             ← Back to Dashboard
           </Link>
           <h1 className="page-title">Patient Profile</h1>
+        </div>
+
+        <div className="card mb-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Wallet Backup & Restore</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Export your full wallet to transfer it to another browser or device.
+          </p>
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded p-3 mb-4">
+            This file contains sensitive health data. Keep it secure.
+          </p>
+
+          {importError && <div className="alert-error mb-3 text-sm">{importError}</div>}
+          {importSuccess && <div className="alert-success mb-3 text-sm">{importSuccess}</div>}
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={handleExportWallet}
+              disabled={backupLoading || importing}
+              className="btn-secondary"
+            >
+              {backupLoading ? "Exporting..." : "Export Wallet"}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleOpenImportPicker}
+              disabled={backupLoading || importing}
+              className="btn-danger"
+            >
+              {importing ? "Importing..." : "Import Wallet"}
+            </button>
+          </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={handleImportFileSelected}
+          />
         </div>
 
         {/* Form */}
@@ -325,6 +482,22 @@ export default function ProfilePage() {
             </Link>
           </div>
         </form>
+
+        <ConfirmDialog
+          isOpen={showImportConfirm}
+          title="Replace Wallet On This Device"
+          message="This will replace your current wallet on this device. This action cannot be undone."
+          confirmLabel="Replace Wallet"
+          cancelLabel="Cancel"
+          isDangerous={true}
+          isLoading={importing}
+          onConfirm={handleConfirmImport}
+          onCancel={() => {
+            if (importing) return;
+            setShowImportConfirm(false);
+            setPendingImportFile(null);
+          }}
+        />
       </div>
     </div>
   );
