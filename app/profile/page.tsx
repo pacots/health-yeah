@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useApp } from "@/lib/context";
 import Link from "next/link";
@@ -9,6 +9,20 @@ import { storage } from "@/lib/storage";
 import { buildWalletExport, downloadWalletExport, parseWalletExportFile, walletFromExport } from "@/lib/wallet-transfer";
 
 export default function ProfilePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <p className="text-gray-600">Loading profile...</p>
+        </div>
+      }
+    >
+      <ProfilePageContent />
+    </Suspense>
+  );
+}
+
+function ProfilePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const app = useApp();
